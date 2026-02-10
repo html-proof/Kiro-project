@@ -19,8 +19,17 @@ app.add_middleware(
 # Initialize services
 @app.on_event("startup")
 async def startup_event():
-    initialize_firebase()
+    print("🚀 Starting Musicly Backend...")
+    
+    # Initialize Firebase (optional - app will work without it for non-auth endpoints)
+    firebase_ok = initialize_firebase()
+    if not firebase_ok:
+        print("⚠️ Running without Firebase authentication")
+    
+    # Initialize Redis (optional - app will work without cache)
     initialize_redis()
+    
+    print("✅ Startup complete!")
 
 # Routes
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
