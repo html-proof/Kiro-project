@@ -1,0 +1,67 @@
+version: '3.8'
+
+# Development Docker Compose with hot reload
+services:
+  # Musicly Backend API (Development)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: musicly-backend-dev
+    ports:
+      - "8000:8000"
+    environment:
+      - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
+      - REDIS_URL=redis://redis:6379
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:8080
+      - APP_ENV=development
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - musicly-network
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: musicly-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-dev-data:/data
+    restart: unless-stopped
+    networks:
+      - musicly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: redis-server --appendonly yes
+
+  # Redis Commander (Redis GUI)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: musicly-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - musicly-network
+
+networks:
+  musicly-network:
+    driver: bridge
+
+volumes:
+  redis-dev-data:
+    driver: local

@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidUser() {
+      return isAuthenticated() && 
+             request.resource.data.uid == request.auth.uid;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Allow read if authenticated and is owner
+      allow read: if isOwner(userId);
+      
+      // Allow create only if authenticated and creating own profile
+      allow create: if isAuthenticated() && 
+                       request.auth.uid == userId &&
+                       request.resource.data.uid == request.auth.uid;
+      
+      // Allow update only if owner and not changing uid
+      allow update: if isOwner(userId) && 
+                       request.resource.data.uid == resource.data.uid;
+      
+      // Prevent deletion of user profiles
+      allow delete: if false;
+      
+      // Likes subcollection
+      match /likes/{videoId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         request.resource.data.video_id == videoId;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // History subcollection
+      match /history/{historyId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Playlists subcollection
+      match /playlists/{playlistId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         request.resource.data.playlist_id == playlistId;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        
+        // Playlist songs subcollection
+        match /songs/{videoId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId) && 
+                           request.resource.data.video_id == videoId;
+          allow update: if isOwner(userId);
+          allow delete: if isOwner(userId);
+        }
+      }
+      
+      // Auto playlists subcollection
+      match /auto_playlists/{playlistId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) && 
+                         request.resource.data.playlist_id == playlistId;
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
+        
+        // Auto playlist songs subcollection
+        match /songs/{videoId} {
+          allow read: if isOwner(userId);
+          allow create: if isOwner(userId) && 
+                           request.resource.data.video_id == videoId;
+          allow update: if isOwner(userId);
+          allow delete: if isOwner(userId);
+        }
+      }
+    }
+    
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
