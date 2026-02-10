@@ -4,7 +4,8 @@ from app.firebase.firebase_auth import verify_token
 from app.firestore.firestore_collections import get_user_ref
 from app.services.user_history_service import add_to_history, get_user_history, update_progress
 from app.services.user_like_service import add_like, get_user_likes, remove_like
-from app.services.recommendation_service import get_user_recommendations
+# Temporarily disabled due to import issue
+# from app.services.recommendation_service import get_user_recommendations
 from app.utils.response_utils import success_response
 
 router = APIRouter()
@@ -82,6 +83,5 @@ async def get_recent(token: dict = Depends(verify_token)):
 
 @router.get("/recommend")
 async def get_recommendations(token: dict = Depends(verify_token)):
-    uid = token["uid"]
-    recommendations = await get_user_recommendations(uid)
-    return success_response(recommendations)
+    """Temporarily disabled - recommendation service being fixed"""
+    return success_response([], "Recommendations temporarily unavailable")
