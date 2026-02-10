@@ -1,11 +1,5 @@
 from fastapi import APIRouter, Query, Depends
-from app.services.youtube_search_service import search_youtube
-from app.services.recommendation_service import (
-    get_user_recommendations,
-    get_similar_songs,
-    get_recommendations_by_artist,
-    get_because_you_liked_recommendations
-)
+from app.services import youtube_search_service, recommendation_service
 from app.utils.query_builder_utils import build_youtube_search_query
 from app.utils.response_utils import success_response
 from app.firebase.firebase_auth import get_current_user
@@ -16,13 +10,13 @@ router = APIRouter()
 async def recommend_by_type(type: str = Query(...), language: str = Query("English")):
     """Get recommendations by music type (e.g., pop, rock, jazz)"""
     query = build_youtube_search_query("", language, type)
-    results = await search_youtube(query, limit=20)
+    results = await youtube_search_service.search_youtube(query, limit=20)
     return success_response(results)
 
 @router.get("/artist")
 async def recommend_by_artist(name: str = Query(...), language: str = Query("English")):
     """Get recommendations for a specific artist"""
-    results = await get_recommendations_by_artist(name, language)
+    results = await recommendation_service.get_recommendations_by_artist(name, language)
     return success_response(results)
 
 @router.get("/similar")
@@ -32,19 +26,19 @@ async def recommend_similar(
 ):
     """Get songs similar to the specified video"""
     uid = user.get("uid")
-    results = await get_similar_songs(id, uid)
+    results = await recommendation_service.get_similar_songs(id, uid)
     return success_response(results)
 
 @router.get("/because-liked")
 async def recommend_because_liked(user: dict = Depends(get_current_user)):
     """Get recommendations based on user's liked songs"""
     uid = user.get("uid")
-    results = await get_because_you_liked_recommendations(uid)
+    results = await recommendation_service.get_because_you_liked_recommendations(uid)
     return success_response(results)
 
 @router.get("/personalized")
 async def get_personalized_recommendations(user: dict = Depends(get_current_user)):
     """Get personalized recommendations based on user's listening history and likes"""
     uid = user.get("uid")
-    results = await get_user_recommendations(uid)
+    results = await recommendation_service.get_user_recommendations(uid)
     return success_response(results)

@@ -1,0 +1,36 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+
+# Documentation
+*.md
+!README.md
+
+# Tests
+test_*.py
+*_test.py
+
+# Logs
+*.log
+
+# Environment (use Railway env vars instead)
+.env
+.env.local
