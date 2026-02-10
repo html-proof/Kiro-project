@@ -1,6 +1,6 @@
 from firebase_admin import auth
 import firebase_admin
-from fastapi import HTTPException, Header
+from fastapi import HTTPException, Header, Depends
 from typing import Optional
 
 async def verify_token(authorization: Optional[str] = Header(None)) -> dict:
@@ -20,4 +20,9 @@ async def verify_token(authorization: Optional[str] = Header(None)) -> dict:
         return decoded_token
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Invalid token: {str(e)}")
+
+# Alias for compatibility
+async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
+    """Get current user from Firebase token (alias for verify_token)"""
+    return await verify_token(authorization)
 
