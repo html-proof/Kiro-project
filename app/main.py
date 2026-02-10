@@ -11,7 +11,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Musicly Backend", version="1.0.0")
+app = FastAPI(title="Musicly Backend", version="1.0.1")  # Version bump to force rebuild
 
 # CORS
 app.add_middleware(
