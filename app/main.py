@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.firebase.firebase_init import initialize_firebase
-from app.redis.redis_client import initialize_redis
-from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes
+import logging
+import sys
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Musicly Backend", version="1.0.0")
 
@@ -19,26 +25,42 @@ app.add_middleware(
 # Initialize services
 @app.on_event("startup")
 async def startup_event():
-    print("🚀 Starting Musicly Backend...")
+    logger.info("🚀 Starting Musicly Backend...")
     
-    # Initialize Firebase (optional - app will work without it for non-auth endpoints)
-    firebase_ok = initialize_firebase()
-    if not firebase_ok:
-        print("⚠️ Running without Firebase authentication")
+    try:
+        from app.firebase.firebase_init import initialize_firebase
+        firebase_ok = initialize_firebase()
+        if not firebase_ok:
+            logger.warning("⚠️ Running without Firebase authentication")
+    except Exception as e:
+        logger.error(f"❌ Firebase initialization failed: {e}")
+        logger.warning("⚠️ Running without Firebase authentication")
     
-    # Initialize Redis (optional - app will work without cache)
-    initialize_redis()
+    try:
+        from app.redis.redis_client import initialize_redis
+        initialize_redis()
+    except Exception as e:
+        logger.error(f"❌ Redis initialization failed: {e}")
+        logger.warning("⚠️ Running without Redis cache")
     
-    print("✅ Startup complete!")
+    logger.info("✅ Startup complete!")
 
-# Routes
-app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
-app.include_router(user_routes.router, prefix="/user", tags=["User"])
-app.include_router(music_routes.router, tags=["Music"])
-app.include_router(recommend_routes.router, prefix="/recommend", tags=["Recommendations"])
-app.include_router(playlist_routes.router, prefix="/playlist", tags=["Playlists"])
-app.include_router(sync_routes.router, prefix="/sync", tags=["Sync"])
-app.include_router(device_routes.router, prefix="/device", tags=["Device"])
+# Import routes after app is created to avoid circular imports
+try:
+    from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes
+    
+    app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
+    app.include_router(user_routes.router, prefix="/user", tags=["User"])
+    app.include_router(music_routes.router, tags=["Music"])
+    app.include_router(recommend_routes.router, prefix="/recommend", tags=["Recommendations"])
+    app.include_router(playlist_routes.router, prefix="/playlist", tags=["Playlists"])
+    app.include_router(sync_routes.router, prefix="/sync", tags=["Sync"])
+    app.include_router(device_routes.router, prefix="/device", tags=["Device"])
+    logger.info("✅ All routes loaded successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to load routes: {e}")
+    logger.error(f"Traceback: ", exc_info=True)
+    # Don't exit - let the app start with just health endpoints
 
 @app.get("/")
 async def root():
