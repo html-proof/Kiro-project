@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.firebase.firebase_init import initialize_firebase
 from app.redis.redis_client import initialize_redis
-from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes, sync_routes
+from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes
 
 app = FastAPI(title="Musicly Backend", version="1.0.0")
 
