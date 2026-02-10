@@ -11,8 +11,19 @@ from typing import Optional
 router = APIRouter()
 
 @router.get("/search")
-async def search_music(q: str = Query(...)):
-    results = await search_youtube(q)
+async def search_music(
+    q: str = Query(...),
+    user_id: Optional[str] = Query(None)
+):
+    """
+    Search for songs with intelligent filtering and personalization.
+    
+    - Filters out non-music content (trailers, movies, news, etc.)
+    - Blocks spam music types (8D, slowed+reverb, etc.)
+    - Prioritizes official channels and trusted labels
+    - Personalizes results based on user's liked artists
+    """
+    results = await search_youtube(q, limit=10, user_id=user_id)
     return success_response(results)
 
 @router.get("/resolve")
