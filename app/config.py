@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     firebase_service_account_json: Optional[str] = None
     redis_url: str = "redis://localhost:6379"
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "*"
     app_env: str = "development"
     
     @property
