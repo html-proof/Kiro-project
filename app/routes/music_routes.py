@@ -49,14 +49,15 @@ async def search_music(
     for result in results:
         if result.get('id'):
             # Construct the full stream URL that points to our play endpoint
-            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=saver"
+            # Use 'high' quality by default for better audio experience
+            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=high"
             logger.info(f"Generated streamUrl for {result.get('title')}: {result['streamUrl']}")
     
     logger.info(f"Returning {len(results)} results")
     return success_response(results)
 
 @router.get("/resolve")
-async def resolve_audio(id: str = Query(...), quality: str = Query("saver")):
+async def resolve_audio(id: str = Query(...), quality: str = Query("high")):
     result = await resolve_audio_stream(id, quality)
     if result:
         return success_response(result)
@@ -67,7 +68,7 @@ async def resolve_audio(id: str = Query(...), quality: str = Query("saver")):
 async def play_audio(
     request: Request,
     id: str = Query(None),
-    quality: str = Query("saver"),
+    quality: str = Query("high"),
     range: Optional[str] = Header(None)
 ):
     # For POST requests, try to get id from query params or body

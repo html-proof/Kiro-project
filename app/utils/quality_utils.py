@@ -1,10 +1,12 @@
 def get_bitrate_for_quality(quality: str) -> int:
     quality_map = {
-        "ultra": 48,
-        "saver": 64,
-        "high": 128
+        "ultra": 48,      # Ultra low for data saving
+        "saver": 64,      # Low quality for data saving
+        "medium": 128,    # Medium quality
+        "high": 192,      # High quality
+        "max": 999        # Maximum available quality (will select highest)
     }
-    return quality_map.get(quality, 64)
+    return quality_map.get(quality, 128)
 
 def select_best_audio_format(formats: list, target_bitrate: int):
     # Prefer audio-only formats, but fall back to combined formats if needed
@@ -17,6 +19,18 @@ def select_best_audio_format(formats: list, target_bitrate: int):
     if not audio_formats:
         return None
     
+    # If target is 999 (max quality), just get the highest bitrate
+    if target_bitrate >= 999:
+        best = None
+        max_bitrate = 0
+        for fmt in audio_formats:
+            abr = fmt.get("abr", 0) or fmt.get("tbr", 0)
+            if abr > max_bitrate:
+                max_bitrate = abr
+                best = fmt
+        return best
+    
+    # Otherwise, find closest to target
     best = None
     best_diff = float('inf')
     

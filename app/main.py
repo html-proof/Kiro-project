@@ -87,7 +87,7 @@ async def ping():
 async def root_play_audio(
     request: Request,
     id: str = Query(None),
-    quality: str = Query("saver")
+    quality: str = Query("high")
 ):
     """Fallback streaming endpoint - handles both GET and POST"""
     from app.services.audio_resolver_service import resolve_audio_stream
