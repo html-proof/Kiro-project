@@ -9,21 +9,31 @@ def get_bitrate_for_quality(quality: str) -> int:
     return quality_map.get(quality, 128)
 
 def select_best_audio_format(formats: list, target_bitrate: int):
-    # Prefer audio-only formats, but fall back to combined formats if needed
-    audio_only = [f for f in formats if f.get("acodec") != "none" and f.get("vcodec") == "none"]
-    audio_with_video = [f for f in formats if f.get("acodec") != "none" and f.get("vcodec") != "none"]
+    # FORCE M4A (itag=140) for most stable streaming
+    # M4A is more reliable than WEBM for mobile playback
+    m4a_formats = [f for f in formats 
+                   if f.get("acodec") != "none" 
+                   and f.get("vcodec") == "none"
+                   and f.get("ext") == "m4a"]
     
-    # Try audio-only first
-    audio_formats = audio_only if audio_only else audio_with_video
+    # If no M4A, try any audio-only format
+    if not m4a_formats:
+        m4a_formats = [f for f in formats 
+                       if f.get("acodec") != "none" 
+                       and f.get("vcodec") == "none"]
     
-    if not audio_formats:
+    # Last resort: any format with audio
+    if not m4a_formats:
+        m4a_formats = [f for f in formats if f.get("acodec") != "none"]
+    
+    if not m4a_formats:
         return None
     
     # If target is 999 (max quality), just get the highest bitrate
     if target_bitrate >= 999:
         best = None
         max_bitrate = 0
-        for fmt in audio_formats:
+        for fmt in m4a_formats:
             abr = fmt.get("abr", 0) or fmt.get("tbr", 0)
             if abr > max_bitrate:
                 max_bitrate = abr
@@ -34,7 +44,7 @@ def select_best_audio_format(formats: list, target_bitrate: int):
     best = None
     best_diff = float('inf')
     
-    for fmt in audio_formats:
+    for fmt in m4a_formats:
         abr = fmt.get("abr", 0) or fmt.get("tbr", 0)
         if abr == 0:
             continue
