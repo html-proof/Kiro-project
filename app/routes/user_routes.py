@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from app.firebase.firebase_auth import verify_token
 from app.firestore.firestore_collections import get_user_ref
 from app.services.user_history_service import add_to_history, get_user_history, update_progress
@@ -15,25 +15,37 @@ class PreferencesRequest(BaseModel):
     selected_artists: list
 
 class PlayRequest(BaseModel):
-    video_id: str
+    video_id: str = Field(None, alias="videoId")
+    id: str = None
     title: str = ""
     artist: str = ""
-    thumbnail: str = ""
+    thumbnail: str = Field("", alias="thumbnailUrl")
     duration: int = 0
     language: str = ""
+    
+    def get_video_id(self):
+        return self.video_id or self.id
 
 class LikeRequest(BaseModel):
-    video_id: str
+    video_id: str = Field(None, alias="videoId")
+    id: str = None
     title: str = ""
     artist: str = ""
-    thumbnail: str = ""
+    thumbnail: str = Field("", alias="thumbnailUrl")
     duration: int = 0
     language: str = ""
+    
+    def get_video_id(self):
+        return self.video_id or self.id
 
 class ProgressRequest(BaseModel):
-    video_id: str
+    video_id: str = Field(None, alias="videoId")
+    id: str = None
     position: int = 0
     duration: int = 0
+    
+    def get_video_id(self):
+        return self.video_id or self.id
 
 @router.post("/preferences")
 async def save_preferences(request: PreferencesRequest, token: dict = Depends(verify_token)):
@@ -49,7 +61,13 @@ async def save_preferences(request: PreferencesRequest, token: dict = Depends(ve
 async def track_play(request: PlayRequest, token: dict = Depends(verify_token)):
     try:
         uid = token["uid"]
-        await add_to_history(uid, request.dict())
+        video_id = request.get_video_id()
+        if not video_id:
+            return success_response({}, "Missing video_id but continuing")
+        
+        data = request.dict(by_alias=True)
+        data['video_id'] = video_id
+        await add_to_history(uid, data)
         return success_response({}, "Play tracked")
     except Exception as e:
         print(f"Error tracking play: {e}")
@@ -57,15 +75,29 @@ async def track_play(request: PlayRequest, token: dict = Depends(verify_token)):
 
 @router.post("/like")
 async def like_song(request: LikeRequest, token: dict = Depends(verify_token)):
-    uid = token["uid"]
-    await add_like(uid, request.dict())
-    return success_response({}, "Song liked")
+    try:
+        uid = token["uid"]
+        video_id = request.get_video_id()
+        if not video_id:
+            return success_response({}, "Missing video_id but continuing")
+        
+        data = request.dict(by_alias=True)
+        data['video_id'] = video_id
+        await add_like(uid, data)
+        return success_response({}, "Song liked")
+    except Exception as e:
+        print(f"Error liking song: {e}")
+        return success_response({}, "Like failed but continuing")
 
 @router.post("/progress")
 async def save_progress(request: ProgressRequest, token: dict = Depends(verify_token)):
     try:
         uid = token["uid"]
-        await update_progress(uid, request.video_id, request.position, request.duration)
+        video_id = request.get_video_id()
+        if not video_id:
+            return success_response({}, "Missing video_id but continuing")
+        
+        await update_progress(uid, video_id, request.position, request.duration)
         return success_response({}, "Progress saved")
     except Exception as e:
         print(f"Error saving progress: {e}")
