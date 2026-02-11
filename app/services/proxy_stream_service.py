@@ -5,6 +5,19 @@ from fastapi.responses import StreamingResponse
 
 logger = logging.getLogger(__name__)
 
+# Reuse client for connection pooling and faster requests
+_http_client = None
+
+def get_http_client():
+    global _http_client
+    if _http_client is None:
+        _http_client = httpx.AsyncClient(
+            timeout=60.0,
+            limits=httpx.Limits(max_keepalive_connections=20, max_connections=100),
+            http2=True  # Enable HTTP/2 for better performance
+        )
+    return _http_client
+
 async def proxy_audio_stream(stream_url: str, range_header: str = None):
     headers = {}
     if range_header:
@@ -15,7 +28,8 @@ async def proxy_audio_stream(stream_url: str, range_header: str = None):
     
     async def stream_generator(response):
         try:
-            async for chunk in response.aiter_bytes(chunk_size=8192):
+            # Larger chunk size for faster streaming (64KB instead of 8KB)
+            async for chunk in response.aiter_bytes(chunk_size=65536):
                 yield chunk
         except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as e:
             # Client disconnected or network error - this is normal for streaming
@@ -26,7 +40,7 @@ async def proxy_audio_stream(stream_url: str, range_header: str = None):
             await response.aclose()
 
     try:
-        client = httpx.AsyncClient(timeout=60.0)
+        client = get_http_client()
         # Using a context manager for the request but NOT for the stream itself
         # inside the generator to ensure the response remains open while yielding.
         request = client.build_request("GET", stream_url, headers=headers)
@@ -36,6 +50,7 @@ async def proxy_audio_stream(stream_url: str, range_header: str = None):
         response_headers = {
             "Content-Type": response.headers.get("Content-Type", "audio/mpeg"),
             "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=3600",  # Enable caching
         }
         
         # Forward Content-Range if it exists (for partial content)
