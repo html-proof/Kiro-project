@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 import logging
@@ -86,7 +86,6 @@ async def root_play_audio(
     """Fallback streaming endpoint - handles both GET and POST"""
     from app.services.audio_resolver_service import resolve_audio_stream
     from app.services.proxy_stream_service import proxy_audio_stream
-    from fastapi import Query, Request
     
     # For POST requests, try to get id from query params or body
     if not id:
