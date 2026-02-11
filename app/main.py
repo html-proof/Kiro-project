@@ -51,7 +51,7 @@ try:
     
     app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
     app.include_router(user_routes.router, prefix="/user", tags=["User"])
-    app.include_router(music_routes.router, tags=["Music"])
+    app.include_router(music_routes.router, prefix="/music", tags=["Music"])
     app.include_router(recommend_routes.router, prefix="/recommend", tags=["Recommendations"])
     app.include_router(playlist_routes.router, prefix="/playlist", tags=["Playlists"])
     app.include_router(sync_routes.router, prefix="/sync", tags=["Sync"])
