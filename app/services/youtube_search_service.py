@@ -81,7 +81,7 @@ class YouTubeService:
                 "title": info.get('title'),
                 "artist": info.get('uploader'),
                 "album": info.get('album') or info.get('title'),
-                "thumbnail": info.get('thumbnail')
+                "thumbnailUrl": info.get('thumbnail')
             }
             
             # Update Cache
@@ -125,7 +125,7 @@ class YouTubeService:
                     "id": entry.get('id'),
                     "title": entry.get('title'),
                     "artist": info.get('uploader') or info.get('title'),
-                    "thumbnail": entry.get('thumbnails', [{}])[0].get('url'),
+                    "thumbnailUrl": entry.get('thumbnails', [{}])[0].get('url'),
                     "duration": duration
                 })
             
@@ -334,7 +334,7 @@ class SearchService:
                     "artist": channel,
                     "channelId": entry.get('uploader_id'),
                     "duration": duration,
-                    "thumbnail": entry.get('thumbnails', [{}])[0].get('url'),
+                    "thumbnailUrl": entry.get('thumbnails', [{}])[0].get('url'),
                     "album": entry.get('album'),
                     "score": score
                 })
