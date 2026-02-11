@@ -29,28 +29,58 @@ print(f"Working directory: {os.getcwd()}")
 def run_keepalive():
     """Run keepalive script in background"""
     time.sleep(60)  # Wait 60s for server to fully start
-    try:
-        subprocess.run([sys.executable, "keepalive.py"])
-    except Exception as e:
-        print(f"Keepalive error: {e}")
+    while True:
+        try:
+            subprocess.run([sys.executable, "keepalive.py"])
+        except Exception as e:
+            print(f"Keepalive error: {e}, restarting in 10s...")
+            time.sleep(10)
 
 keepalive_thread = threading.Thread(target=run_keepalive, daemon=True)
 keepalive_thread.start()
 print("✅ Keepalive thread started (will begin in 60s)")
 
-# Start uvicorn with better error handling
-try:
-    subprocess.run([
-        "uvicorn",
-        "app.main:app",
-        "--host", "0.0.0.0",
-        "--port", str(port_int),
-        "--log-level", "info",
-        "--access-log"
-    ], check=True)
-except KeyboardInterrupt:
-    print("\nShutting down gracefully...")
-    sys.exit(0)
-except Exception as e:
-    print(f"Error starting server: {e}")
-    sys.exit(1)
+# Start uvicorn with auto-restart on failure
+max_retries = 5
+retry_count = 0
+
+while retry_count < max_retries:
+    try:
+        print(f"🚀 Starting uvicorn server (attempt {retry_count + 1}/{max_retries})...")
+        result = subprocess.run([
+            "uvicorn",
+            "app.main:app",
+            "--host", "0.0.0.0",
+            "--port", str(port_int),
+            "--log-level", "info",
+            "--access-log"
+        ])
+        
+        # If server exits cleanly (exit code 0), don't retry
+        if result.returncode == 0:
+            print("Server shut down cleanly")
+            break
+        
+        # Server crashed, increment retry counter
+        retry_count += 1
+        if retry_count < max_retries:
+            print(f"⚠️ Server crashed with exit code {result.returncode}, restarting in 5s...")
+            time.sleep(5)
+        else:
+            print(f"❌ Max retries ({max_retries}) reached, giving up")
+            sys.exit(1)
+            
+    except KeyboardInterrupt:
+        print("\nShutting down gracefully...")
+        sys.exit(0)
+    except Exception as e:
+        print(f"Error starting server: {e}")
+        retry_count += 1
+        if retry_count < max_retries:
+            print(f"Retrying in 5s... ({retry_count}/{max_retries})")
+            time.sleep(5)
+        else:
+            print(f"❌ Max retries ({max_retries}) reached")
+            sys.exit(1)
+
+print("Server process ended")
