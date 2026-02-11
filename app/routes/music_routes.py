@@ -191,3 +191,49 @@ async def play_audio_64k(
     except Exception as e:
         logger.error(f"Transcoding failed: {e}")
         return {"success": False, "message": f"Transcoding failed: {str(e)}"}
+
+@router.get("/play-48k")
+@router.post("/play-48k")
+async def play_audio_48k(
+    request: Request,
+    id: str = Query(None)
+):
+    """
+    Stream audio transcoded to 48kbps MP3 - Ultra data saver mode.
+    Smallest file size for very slow connections. ~1.1MB per 3min song.
+    """
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+        except:
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
+    
+    logger.info(f"Transcoding audio to 48kbps (ultra saver) for id: {id}")
+    
+    # Get the highest quality source (we'll transcode it down)
+    stream_data = await resolve_audio_stream(id, "max")
+    if not stream_data:
+        return {"success": False, "message": "Failed to resolve audio stream"}
+    
+    try:
+        # Transcode to 48kbps MP3 with aggressive compression
+        return StreamingResponse(
+            transcode_audio_stream_mp3(stream_data["stream_url"], "48k"),
+            media_type="audio/mpeg",
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=3600",
+            }
+        )
+    except Exception as e:
+        logger.error(f"Transcoding failed: {e}")
+        return {"success": False, "message": f"Transcoding failed: {str(e)}"}
