@@ -7,6 +7,9 @@ from app.services.proxy_stream_service import proxy_audio_stream
 from app.services.proxy_video_stream_service import proxy_video_stream
 from app.utils.response_utils import success_response
 from typing import Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -30,10 +33,13 @@ async def search_music(
     # Get the base URL from the request
     base_url = str(request.base_url).rstrip('/') if request else "http://localhost:8000"
     
+    logger.info(f"Search request base_url: {base_url}")
+    
     for result in results:
         if result.get('id'):
             # Construct the full stream URL that points to our play endpoint
             result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=saver"
+            logger.info(f"Generated streamUrl for {result.get('title')}: {result['streamUrl']}")
     
     return success_response(results)
 
@@ -67,12 +73,18 @@ async def play_audio(
             except:
                 pass
     
+    logger.info(f"Play request - id: {id}, quality: {quality}, method: {request.method}")
+    
     if not id:
+        logger.error("Play request missing id parameter")
         return {"success": False, "message": "Missing id parameter"}
     
     stream_data = await resolve_audio_stream(id, quality)
     if stream_data:
+        logger.info(f"Streaming audio for id: {id}")
         return await proxy_audio_stream(stream_data["stream_url"], range)
+    
+    logger.error(f"Failed to resolve stream for id: {id}")
     return {"success": False, "message": "Failed to stream"}
 
 @router.get("/preview")
