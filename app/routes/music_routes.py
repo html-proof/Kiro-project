@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, Header
+from fastapi import APIRouter, Query, Header, Request
 from fastapi.responses import StreamingResponse
 from app.services.youtube_search_service import search_youtube
 from app.services.audio_resolver_service import resolve_audio_stream
@@ -13,7 +13,8 @@ router = APIRouter()
 @router.get("/search")
 async def search_music(
     q: str = Query(...),
-    user_id: Optional[str] = Query(None)
+    user_id: Optional[str] = Query(None),
+    request: Request = None
 ):
     """
     Search for songs with intelligent filtering and personalization.
@@ -24,6 +25,16 @@ async def search_music(
     - Personalizes results based on user's liked artists
     """
     results = await search_youtube(q, limit=10, user_id=user_id)
+    
+    # Add streamUrl to each result for direct playback
+    # Get the base URL from the request
+    base_url = str(request.base_url).rstrip('/') if request else "http://localhost:8000"
+    
+    for result in results:
+        if result.get('id'):
+            # Construct the full stream URL that points to our play endpoint
+            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=saver"
+    
     return success_response(results)
 
 @router.get("/resolve")
