@@ -1,9 +1,14 @@
 import yt_dlp
 import logging
+import os
 from app.utils.quality_utils import select_best_video_format
 from app.redis.redis_cache import cache_set, cache_get
 
 logger = logging.getLogger(__name__)
+
+# Check if cookies file exists
+COOKIES_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'cookies.txt')
+USE_COOKIES = os.path.exists(COOKIES_FILE)
 
 async def resolve_video_stream(video_id: str, quality: str = "low") -> dict:
     cache_key = f"video:{video_id}:{quality}"
@@ -29,6 +34,11 @@ async def resolve_video_stream(video_id: str, quality: str = "low") -> dict:
             "Sec-Fetch-Mode": "navigate"
         }
     }
+    
+    # Add cookies if available
+    if USE_COOKIES:
+        ydl_opts["cookiefile"] = COOKIES_FILE
+        logger.info(f"Using cookies from: {COOKIES_FILE}")
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

@@ -1,11 +1,16 @@
 import yt_dlp
 import asyncio
 import time
+import os
 from typing import List, Dict, Any, Optional
 
 
 class YouTubeService:
     def __init__(self):
+        # Check if cookies file exists
+        cookies_file = os.path.join(os.path.dirname(__file__), '..', '..', 'cookies.txt')
+        use_cookies = os.path.exists(cookies_file)
+        
         self.ydl_opts_search = {
             'format': 'bestaudio/best',
             'quiet': True,
@@ -47,6 +52,15 @@ class YouTubeService:
                 'Sec-Fetch-Mode': 'navigate'
             }
         }
+        
+        # Add cookies if available
+        if use_cookies:
+            self.ydl_opts_search['cookiefile'] = cookies_file
+            self.ydl_opts_stream['cookiefile'] = cookies_file
+            print(f"✅ Using YouTube cookies from: {cookies_file}")
+        else:
+            print(f"⚠️ No cookies.txt found. Some videos may be blocked by YouTube.")
+        
         self.stream_cache = {}  # video_id -> {url, info, timestamp}
     
     async def search_songs(self, query: str, limit: int = 10, user_id: str = None) -> List[Dict[str, Any]]:

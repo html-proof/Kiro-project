@@ -20,3 +20,6 @@ build/
 
 # Firebase Admin Key
 *firebase-adminsdk*.json
+
+# YouTube cookies (contains sensitive session data)
+cookies.txt
