@@ -30,10 +30,21 @@ async def search_music(
     results = await search_youtube(q, limit=10, user_id=user_id)
     
     # Add streamUrl to each result for direct playback
-    # Get the base URL from the request
-    base_url = str(request.base_url).rstrip('/') if request else "http://localhost:8000"
+    # Get the base URL from the request, with fallback
+    if request:
+        # Try to get the base URL from headers first (for proxied requests)
+        forwarded_proto = request.headers.get('x-forwarded-proto', 'http')
+        forwarded_host = request.headers.get('x-forwarded-host')
+        
+        if forwarded_host:
+            base_url = f"{forwarded_proto}://{forwarded_host}"
+        else:
+            base_url = str(request.base_url).rstrip('/')
+    else:
+        base_url = "http://localhost:8000"
     
     logger.info(f"Search request base_url: {base_url}")
+    logger.info(f"Request headers: {dict(request.headers) if request else 'No request'}")
     
     for result in results:
         if result.get('id'):
@@ -41,6 +52,7 @@ async def search_music(
             result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=saver"
             logger.info(f"Generated streamUrl for {result.get('title')}: {result['streamUrl']}")
     
+    logger.info(f"Returning {len(results)} results")
     return success_response(results)
 
 @router.get("/resolve")
