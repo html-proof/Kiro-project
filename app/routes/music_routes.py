@@ -45,6 +45,7 @@ async def resolve_audio(id: str = Query(...), quality: str = Query("saver")):
     return {"success": False, "message": "Failed to resolve"}
 
 @router.get("/play")
+@router.post("/play")
 async def play_audio(
     id: str = Query(...),
     quality: str = Query("saver"),

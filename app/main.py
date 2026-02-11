@@ -74,3 +74,18 @@ async def health():
 async def ping():
     """Keepalive endpoint to prevent container sleep"""
     return {"status": "alive", "timestamp": "ok"}
+
+# Fallback play endpoint at root level for compatibility
+@app.get("/play")
+@app.post("/play")
+async def root_play_audio(id: str, quality: str = "saver"):
+    """Fallback streaming endpoint - redirects to /music/play"""
+    from app.services.audio_resolver_service import resolve_audio_stream
+    from app.services.proxy_stream_service import proxy_audio_stream
+    from fastapi import Header
+    from typing import Optional
+    
+    stream_data = await resolve_audio_stream(id, quality)
+    if stream_data:
+        return await proxy_audio_stream(stream_data["stream_url"], None)
+    return {"success": False, "message": "Failed to stream"}
