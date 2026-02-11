@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 import logging
@@ -78,12 +78,33 @@ async def ping():
 # Fallback play endpoint at root level for compatibility
 @app.get("/play")
 @app.post("/play")
-async def root_play_audio(id: str, quality: str = "saver"):
-    """Fallback streaming endpoint - redirects to /music/play"""
+async def root_play_audio(
+    request: Request,
+    id: str = Query(None),
+    quality: str = Query("saver")
+):
+    """Fallback streaming endpoint - handles both GET and POST"""
     from app.services.audio_resolver_service import resolve_audio_stream
     from app.services.proxy_stream_service import proxy_audio_stream
-    from fastapi import Header
-    from typing import Optional
+    from fastapi import Query, Request
+    
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+            quality = body.get('quality', 'saver')
+        except:
+            # Try form data
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+                quality = form.get('quality', 'saver')
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
     
     stream_data = await resolve_audio_stream(id, quality)
     if stream_data:

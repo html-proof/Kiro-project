@@ -47,10 +47,29 @@ async def resolve_audio(id: str = Query(...), quality: str = Query("saver")):
 @router.get("/play")
 @router.post("/play")
 async def play_audio(
-    id: str = Query(...),
+    request: Request,
+    id: str = Query(None),
     quality: str = Query("saver"),
     range: Optional[str] = Header(None)
 ):
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+            quality = body.get('quality', quality)
+        except:
+            # Try form data
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+                quality = form.get('quality', quality)
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
+    
     stream_data = await resolve_audio_stream(id, quality)
     if stream_data:
         return await proxy_audio_stream(stream_data["stream_url"], range)
