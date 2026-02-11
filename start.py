@@ -28,7 +28,7 @@ print(f"Working directory: {os.getcwd()}")
 # Start keepalive in background thread
 def run_keepalive():
     """Run keepalive script in background"""
-    time.sleep(30)  # Wait 30s for server to start
+    time.sleep(60)  # Wait 60s for server to fully start
     try:
         subprocess.run([sys.executable, "keepalive.py"])
     except Exception as e:
@@ -36,7 +36,7 @@ def run_keepalive():
 
 keepalive_thread = threading.Thread(target=run_keepalive, daemon=True)
 keepalive_thread.start()
-print("✅ Keepalive thread started")
+print("✅ Keepalive thread started (will begin in 60s)")
 
 # Start uvicorn with better error handling
 try:
