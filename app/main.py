@@ -121,3 +121,18 @@ async def root_play_audio(
     if stream_data:
         return await proxy_audio_stream(stream_data["stream_url"], None)
     return {"success": False, "message": "Failed to stream"}
+
+# Fallback preview endpoint at root level for compatibility
+@app.get("/preview")
+async def root_preview_audio(
+    id: str = Query(...),
+    range: str = Header(None)
+):
+    """Fallback preview endpoint - ultra quality"""
+    from app.services.audio_resolver_service import resolve_audio_stream
+    from app.services.proxy_stream_service import proxy_audio_stream
+    
+    stream_data = await resolve_audio_stream(id, "ultra")
+    if stream_data:
+        return await proxy_audio_stream(stream_data["stream_url"], range)
+    return {"success": False, "message": "Failed to preview"}
