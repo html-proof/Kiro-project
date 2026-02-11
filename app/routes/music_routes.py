@@ -101,7 +101,27 @@ async def play_audio(
     return {"success": False, "message": "Failed to stream"}
 
 @router.get("/preview")
-async def preview_audio(id: str = Query(...), range: Optional[str] = Header(None)):
+@router.post("/preview")
+async def preview_audio(
+    request: Request,
+    id: str = Query(None),
+    range: Optional[str] = Header(None)
+):
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+        except:
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
+    
     stream_data = await resolve_audio_stream(id, "ultra")
     if stream_data:
         return await proxy_audio_stream(stream_data["stream_url"], range)
