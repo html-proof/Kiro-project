@@ -27,8 +27,8 @@ async def proxy_audio_stream(stream_url: str, range_header: str = None):
     
     async def stream_generator(response):
         try:
-            # Larger chunk size for faster streaming (64KB instead of 8KB)
-            async for chunk in response.aiter_bytes(chunk_size=65536):
+            # Larger chunk size for smoother streaming (128KB)
+            async for chunk in response.aiter_bytes(chunk_size=131072):
                 yield chunk
         except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as e:
             # Client disconnected or network error - this is normal for streaming
