@@ -11,8 +11,9 @@ from app.utils.response_utils import success_response
 router = APIRouter()
 
 class PreferencesRequest(BaseModel):
-    selected_languages: list
-    selected_artists: list
+    selected_languages: list = []
+    selected_artists: list = []
+    selected_moods: list = []  # Add support for moods
 
 class PlayRequest(BaseModel):
     video_id: str = Field(None, alias="videoId")
