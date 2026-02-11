@@ -9,38 +9,52 @@ async def proxy_video_stream(stream_url: str, range_header: str = None):
     if range_header:
         headers["Range"] = range_header
     
-    async def stream_generator():
+    # We use a single request to avoid duplicate requests to YouTube
+    # which can lead to throttling or 403 errors.
+    
+    async def stream_generator(response):
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream("GET", stream_url, headers=headers) as response:
-                    async for chunk in response.aiter_bytes(chunk_size=8192):
-                        yield chunk
+            async for chunk in response.aiter_bytes(chunk_size=8192):
+                yield chunk
         except (httpx.ReadError, httpx.RemoteProtocolError, httpx.ConnectError) as e:
             # Client disconnected or network error - this is normal for streaming
             logger.debug(f"Video stream interrupted (normal): {type(e).__name__}")
         except Exception as e:
             logger.error(f"Unexpected video streaming error: {e}")
-    
-    # Get initial response to extract headers
+        finally:
+            await response.aclose()
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.head(stream_url, headers=headers)
+        client = httpx.AsyncClient(timeout=60.0)
+        # Using a context manager for the request but NOT for the stream itself
+        # inside the generator to ensure the response remains open while yielding.
+        request = client.build_request("GET", stream_url, headers=headers)
+        response = await client.send(request, stream=True)
+        
+        # Forward relevant headers from the original response
+        response_headers = {
+            "Content-Type": response.headers.get("Content-Type", "video/mp4"),
+            "Accept-Ranges": "bytes",
+        }
+        
+        # Forward Content-Range if it exists (for partial content)
+        if "Content-Range" in response.headers:
+            response_headers["Content-Range"] = response.headers["Content-Range"]
             
-            return StreamingResponse(
-                stream_generator(),
-                status_code=response.status_code if response.status_code in [200, 206] else 200,
-                headers={
-                    "Content-Type": response.headers.get("Content-Type", "video/mp4"),
-                    "Accept-Ranges": "bytes",
-                    "Content-Length": response.headers.get("Content-Length", ""),
-                    "Content-Range": response.headers.get("Content-Range", "")
-                }
-            )
+        # IMPORTANT: We purposefully OMIT Content-Length here.
+        # This prevents the "Response content shorter than Content-Length" RuntimeError
+        # in uvicorn/starlette when a stream is interrupted.
+        # FastAPI/Uvicorn will automatically use chunked transfer encoding.
+        
+        return StreamingResponse(
+            stream_generator(response),
+            status_code=response.status_code if response.status_code in [200, 206] else 200,
+            headers=response_headers
+        )
     except Exception as e:
         logger.error(f"Failed to initialize video stream: {e}")
-        # Fallback: return stream without pre-fetching headers
         return StreamingResponse(
-            stream_generator(),
-            media_type="video/mp4",
-            headers={"Accept-Ranges": "bytes"}
+            iter([]),
+            status_code=500,
+            media_type="video/mp4"
         )
