@@ -5,6 +5,7 @@ from app.services.audio_resolver_service import resolve_audio_stream
 from app.services.video_resolver_service import resolve_video_stream
 from app.services.proxy_stream_service import proxy_audio_stream
 from app.services.proxy_video_stream_service import proxy_video_stream
+from app.services.audio_transcoder_service import transcode_audio_stream_mp3
 from app.utils.response_utils import success_response
 from typing import Optional
 import logging
@@ -144,3 +145,49 @@ async def play_video(
     if stream_data:
         return await proxy_video_stream(stream_data["stream_url"], range)
     return {"success": False, "message": "Failed to stream video"}
+
+@router.get("/play-64k")
+@router.post("/play-64k")
+async def play_audio_64k(
+    request: Request,
+    id: str = Query(None)
+):
+    """
+    Stream audio transcoded to 64kbps MP3 for bandwidth optimization.
+    Perfect for mobile data saving and slower connections.
+    """
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+        except:
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
+    
+    logger.info(f"Transcoding audio to 64kbps for id: {id}")
+    
+    # Get the highest quality source (we'll transcode it down)
+    stream_data = await resolve_audio_stream(id, "max")
+    if not stream_data:
+        return {"success": False, "message": "Failed to resolve audio stream"}
+    
+    try:
+        # Transcode to 64kbps MP3
+        return StreamingResponse(
+            transcode_audio_stream_mp3(stream_data["stream_url"], "64k"),
+            media_type="audio/mpeg",
+            headers={
+                "Accept-Ranges": "bytes",
+                "Cache-Control": "public, max-age=3600",
+            }
+        )
+    except Exception as e:
+        logger.error(f"Transcoding failed: {e}")
+        return {"success": False, "message": f"Transcoding failed: {str(e)}"}
