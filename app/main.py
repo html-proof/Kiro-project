@@ -124,13 +124,30 @@ async def root_play_audio(
 
 # Fallback preview endpoint at root level for compatibility
 @app.get("/preview")
+@app.post("/preview")
 async def root_preview_audio(
-    id: str = Query(...),
+    request: Request,
+    id: str = Query(None),
     range: str = Header(None)
 ):
-    """Fallback preview endpoint - ultra quality"""
+    """Fallback preview endpoint - ultra quality - handles both GET and POST"""
     from app.services.audio_resolver_service import resolve_audio_stream
     from app.services.proxy_stream_service import proxy_audio_stream
+    
+    # For POST requests, try to get id from query params or body
+    if not id:
+        try:
+            body = await request.json()
+            id = body.get('id') or body.get('video_id')
+        except:
+            try:
+                form = await request.form()
+                id = form.get('id') or form.get('video_id')
+            except:
+                pass
+    
+    if not id:
+        return {"success": False, "message": "Missing id parameter"}
     
     stream_data = await resolve_audio_stream(id, "ultra")
     if stream_data:
