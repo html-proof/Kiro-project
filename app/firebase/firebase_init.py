@@ -11,8 +11,11 @@ def initialize_firebase():
         
         try:
             cred = credentials.Certificate(settings.firebase_credentials)
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://sample-music-65323-default-rtdb.asia-southeast1.firebasedatabase.app/'
+            })
             print("✅ Firebase initialized successfully")
+            print("✅ Realtime Database URL configured")
             return True
         except Exception as e:
             print(f"❌ ERROR: Failed to initialize Firebase: {e}")

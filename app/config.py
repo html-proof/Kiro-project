@@ -5,7 +5,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     firebase_service_account_json: Optional[str] = None
-    firebase_credentials_path: Optional[str] = None
+    firebase_credentials_path: Optional[str] = "app/sample-music-65323-firebase-adminsdk-fbsvc-fb9ef475e0.json"
+    firebase_database_url: str = "https://sample-music-65323-default-rtdb.asia-southeast1.firebasedatabase.app/"
     redis_url: str = "redis://localhost:6379"
     allowed_origins: str = "*"
     app_env: str = "development"
