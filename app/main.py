@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request, Query, Header
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 import logging
