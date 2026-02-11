@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """
-Railway startup script with proper PORT handling
+Railway startup script with proper PORT handling and error recovery
 """
 import os
 import sys
+import subprocess
+import time
 
 # Get PORT from environment, default to 8000
 port = os.environ.get("PORT", "8000")
@@ -19,11 +21,22 @@ except ValueError:
     sys.exit(1)
 
 print(f"Starting Musicly Backend on port {port_int}...")
+print(f"Python version: {sys.version}")
+print(f"Working directory: {os.getcwd()}")
 
-# Start uvicorn
-os.execvp("uvicorn", [
-    "uvicorn",
-    "app.main:app",
-    "--host", "0.0.0.0",
-    "--port", str(port_int)
-])
+# Start uvicorn with better error handling
+try:
+    subprocess.run([
+        "uvicorn",
+        "app.main:app",
+        "--host", "0.0.0.0",
+        "--port", str(port_int),
+        "--log-level", "info",
+        "--access-log"
+    ], check=True)
+except KeyboardInterrupt:
+    print("\nShutting down gracefully...")
+    sys.exit(0)
+except Exception as e:
+    print(f"Error starting server: {e}")
+    sys.exit(1)

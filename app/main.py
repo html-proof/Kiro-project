@@ -79,7 +79,12 @@ async def health():
 @app.get("/ping")
 async def ping():
     """Keepalive endpoint to prevent container sleep"""
-    return {"status": "alive", "timestamp": "ok"}
+    import time
+    return {
+        "status": "alive", 
+        "timestamp": int(time.time()),
+        "message": "Server is running"
+    }
 
 # Fallback play endpoint at root level for compatibility
 @app.get("/play")
