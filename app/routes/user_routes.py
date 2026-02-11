@@ -16,24 +16,24 @@ class PreferencesRequest(BaseModel):
 
 class PlayRequest(BaseModel):
     video_id: str
-    title: str
-    artist: str
-    thumbnail: str
-    duration: int
+    title: str = ""
+    artist: str = ""
+    thumbnail: str = ""
+    duration: int = 0
     language: str = ""
 
 class LikeRequest(BaseModel):
     video_id: str
-    title: str
-    artist: str
-    thumbnail: str
-    duration: int
+    title: str = ""
+    artist: str = ""
+    thumbnail: str = ""
+    duration: int = 0
     language: str = ""
 
 class ProgressRequest(BaseModel):
     video_id: str
-    position: int
-    duration: int
+    position: int = 0
+    duration: int = 0
 
 @router.post("/preferences")
 async def save_preferences(request: PreferencesRequest, token: dict = Depends(verify_token)):
@@ -47,9 +47,13 @@ async def save_preferences(request: PreferencesRequest, token: dict = Depends(ve
 
 @router.post("/play")
 async def track_play(request: PlayRequest, token: dict = Depends(verify_token)):
-    uid = token["uid"]
-    await add_to_history(uid, request.dict())
-    return success_response({}, "Play tracked")
+    try:
+        uid = token["uid"]
+        await add_to_history(uid, request.dict())
+        return success_response({}, "Play tracked")
+    except Exception as e:
+        print(f"Error tracking play: {e}")
+        return success_response({}, "Play tracking failed but continuing")
 
 @router.post("/like")
 async def like_song(request: LikeRequest, token: dict = Depends(verify_token)):
@@ -59,9 +63,13 @@ async def like_song(request: LikeRequest, token: dict = Depends(verify_token)):
 
 @router.post("/progress")
 async def save_progress(request: ProgressRequest, token: dict = Depends(verify_token)):
-    uid = token["uid"]
-    await update_progress(uid, request.video_id, request.position, request.duration)
-    return success_response({}, "Progress saved")
+    try:
+        uid = token["uid"]
+        await update_progress(uid, request.video_id, request.position, request.duration)
+        return success_response({}, "Progress saved")
+    except Exception as e:
+        print(f"Error saving progress: {e}")
+        return success_response({}, "Progress save failed but continuing")
 
 @router.get("/history")
 async def get_history(token: dict = Depends(verify_token)):
