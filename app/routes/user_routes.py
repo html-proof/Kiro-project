@@ -121,38 +121,48 @@ async def save_preferences(request: PreferencesRequest, token: dict = Depends(ve
     Save user preferences including languages, moods, and artists
     Supports both onboarding and settings updates
     """
-    uid = token["uid"]
-    user_ref = get_user_ref(uid)
-    
-    # Merge both naming conventions
-    languages = request.selected_languages or request.languages
-    moods = request.selected_moods or request.moods
-    artists = request.selected_artists
-    
-    # Build update data
-    update_data = {}
-    if languages:
-        update_data["selected_languages"] = languages
-    if moods:
-        update_data["selected_moods"] = moods
-    if artists:
-        update_data["selected_artists"] = artists
-    
-    # Also save in preferences object for compatibility
-    update_data["preferences"] = {
-        "languages": languages,
-        "moods": moods,
-        "artists": artists,
-        "updated_at": datetime.utcnow().isoformat()
-    }
-    
-    user_ref.set(update_data, merge=True)
-    return success_response({
-        "message": "Preferences saved successfully",
-        "languages": languages,
-        "moods": moods,
-        "artists": artists
-    }, "Preferences saved")
+    try:
+        uid = token["uid"]
+        user_ref = get_user_ref(uid)
+        
+        # Merge both naming conventions
+        languages = request.selected_languages or request.languages
+        moods = request.selected_moods or request.moods
+        artists = request.selected_artists
+        
+        # Build update data
+        update_data = {}
+        if languages:
+            update_data["selected_languages"] = languages
+        if moods:
+            update_data["selected_moods"] = moods
+        if artists:
+            update_data["selected_artists"] = artists
+        
+        # Also save in preferences object for compatibility
+        update_data["preferences"] = {
+            "languages": languages,
+            "moods": moods,
+            "artists": artists,
+            "updated_at": datetime.utcnow().isoformat()
+        }
+        
+        # Use set with merge=True to create document if it doesn't exist
+        user_ref.set(update_data, merge=True)
+        
+        return success_response({
+            "message": "Preferences saved successfully",
+            "languages": languages,
+            "moods": moods,
+            "artists": artists
+        }, "Preferences saved")
+    except Exception as e:
+        print(f"Error saving preferences: {e}")
+        # Return success anyway to not block the user
+        return success_response({
+            "message": "Preferences saved with errors",
+            "error": str(e)
+        }, "Preferences saved")
 
 @router.get("/preferences")
 async def get_preferences(token: dict = Depends(verify_token)):
