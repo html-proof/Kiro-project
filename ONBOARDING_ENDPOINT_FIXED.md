@@ -1,15 +1,36 @@
 # Onboarding Endpoint Fixed ✅
 
 ## Problem
-Flutter app was calling `POST /user/onboarding` but the endpoint didn't exist, causing 404 errors.
+1. Flutter app was calling `GET /onboarding` but endpoint didn't exist (404 error)
+2. User wanted to use Firestore instead of Firebase Realtime Database
 
 ## Solution
-Added `/user/onboarding` endpoint to `app/routes/user_routes.py`
+Added both GET and POST `/user/onboarding` endpoints using Firestore
 
 ## Endpoint Details
 
+### GET /user/onboarding
+Check if user has completed onboarding and get their preferences.
+
+**Authentication**: Required (Bearer token)
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "completed": true,
+    "preferences": {
+      "languages": ["English", "Hindi", "Tamil"],
+      "moods": ["Happy", "Energetic", "Chill", "Romantic"],
+      "updated_at": "2024-01-15T10:30:00.000000"
+    }
+  }
+}
+```
+
 ### POST /user/onboarding
-Handles user onboarding by saving language and mood preferences to Firebase Realtime Database.
+Save user's language and mood preferences during onboarding.
 
 **Authentication**: Required (Bearer token)
 
@@ -33,26 +54,51 @@ Handles user onboarding by saving language and mood preferences to Firebase Real
 }
 ```
 
+## Data Storage
+
+### Firestore Structure
+Data is stored in Firestore at:
+```
+/users/{user_id}/
+  preferences: {
+    languages: ["English", "Hindi"],
+    moods: ["Happy", "Energetic"],
+    updated_at: "2024-01-15T10:30:00.000000"
+  }
+```
+
+### Why Firestore?
+- Better integration with existing user data structure
+- Already used for likes, history, playlists
+- More efficient queries for recommendations
+- Real-time sync capabilities
+
 ## How It Works
 
+### GET Endpoint
 1. Extracts user ID from authentication token
-2. Calls `user_profile_service.set_user_preferences()` to save to Firebase Realtime Database
-3. Data is stored at: `https://sample-music-65323-default-rtdb.asia-southeast1.firebasedatabase.app/users/{user_id}/preferences`
+2. Fetches user document from Firestore
+3. Returns onboarding status and preferences
+4. Returns `completed: false` if no preferences found
+
+### POST Endpoint
+1. Extracts user ID from authentication token
+2. Saves preferences to Firestore using `merge=True` (won't overwrite other user data)
+3. Stores timestamp for tracking
 4. Returns success response with saved preferences
 
-## Integration with User Profile System
-
-The endpoint integrates with the comprehensive user profile system created in TASK 8:
-- Uses `UserProfileService` from `app/services/user_profile_service.py`
-- Stores preferences in Firebase Realtime Database under `/users/{user_id}/preferences`
-- Preferences are used by recommendation engine for personalized content
-
 ## Files Modified
-- `musicly-backend/app/routes/user_routes.py` - Added onboarding endpoint
+- `musicly-backend/app/routes/user_routes.py` - Added GET and POST onboarding endpoints
 
 ## Testing
 
-Test with curl:
+### Test GET endpoint:
+```bash
+curl -X GET https://web-production-1dedc.up.railway.app/user/onboarding \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Test POST endpoint:
 ```bash
 curl -X POST https://web-production-1dedc.up.railway.app/user/onboarding \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -64,7 +110,9 @@ curl -X POST https://web-production-1dedc.up.railway.app/user/onboarding \
 ```
 
 ## Status
-✅ Endpoint added and ready to use
+✅ GET endpoint added for checking onboarding status
+✅ POST endpoint added for saving preferences
+✅ Changed from Firebase Realtime Database to Firestore
 ✅ No syntax errors
-✅ Integrated with user profile service
-✅ Saves to Firebase Realtime Database
+✅ Integrated with existing Firestore structure
+✅ Uses merge=True to preserve other user data

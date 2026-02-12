@@ -4,10 +4,10 @@ from app.firebase.firebase_auth import verify_token
 from app.firestore.firestore_collections import get_user_ref
 from app.services.user_history_service import add_to_history, get_user_history, update_progress
 from app.services.user_like_service import add_like, get_user_likes, remove_like
-from app.services.user_profile_service import get_user_profile_service
 # Temporarily disabled due to import issue
 # from app.services.recommendation_service import get_user_recommendations
 from app.utils.response_utils import success_response
+from datetime import datetime
 
 router = APIRouter()
 
@@ -53,33 +53,59 @@ class ProgressRequest(BaseModel):
     def get_video_id(self):
         return self.video_id or self.id
 
+@router.get("/onboarding")
+async def get_onboarding(token: dict = Depends(verify_token)):
+    """
+    Get user onboarding status and preferences
+    """
+    try:
+        uid = token["uid"]
+        user_ref = get_user_ref(uid)
+        user_doc = user_ref.get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            preferences = user_data.get('preferences', {})
+            return success_response({
+                "completed": bool(preferences.get('languages') or preferences.get('moods')),
+                "preferences": preferences
+            })
+        else:
+            return success_response({
+                "completed": False,
+                "preferences": {}
+            })
+    except Exception as e:
+        print(f"Error getting onboarding status: {e}")
+        return success_response({
+            "completed": False,
+            "preferences": {}
+        })
+
 @router.post("/onboarding")
 async def onboarding(request: OnboardingRequest, token: dict = Depends(verify_token)):
     """
-    Handle user onboarding - save language and mood preferences
+    Handle user onboarding - save language and mood preferences to Firestore
     Called once when user first logs in
     """
     try:
         uid = token["uid"]
-        profile_service = get_user_profile_service()
+        user_ref = get_user_ref(uid)
         
-        # Save preferences to Firebase Realtime Database
-        success = await profile_service.set_user_preferences(
-            user_id=uid,
-            languages=request.languages,
-            moods=request.moods
-        )
+        # Save preferences to Firestore
+        user_ref.set({
+            'preferences': {
+                'languages': request.languages,
+                'moods': request.moods,
+                'updated_at': datetime.utcnow().isoformat()
+            }
+        }, merge=True)
         
-        if success:
-            return success_response({
-                "message": "Onboarding completed successfully",
-                "languages": request.languages,
-                "moods": request.moods
-            })
-        else:
-            return success_response({
-                "message": "Onboarding completed but preferences save failed"
-            })
+        return success_response({
+            "message": "Onboarding completed successfully",
+            "languages": request.languages,
+            "moods": request.moods
+        })
     except Exception as e:
         print(f"Error in onboarding: {e}")
         return success_response({
