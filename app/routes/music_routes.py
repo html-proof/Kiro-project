@@ -242,3 +242,35 @@ async def play_audio_48k(
     except Exception as e:
         logger.error(f"Transcoding failed: {e}")
         return {"success": False, "message": f"Transcoding failed: {str(e)}"}
+
+@router.post("/prefetch")
+async def prefetch_songs(request: Request):
+    """
+    Pre-fetch stream URLs for multiple songs to enable instant playback.
+    Client sends list of song IDs, backend resolves them in background.
+    """
+    try:
+        body = await request.json()
+        song_ids = body.get('ids', [])
+        quality = body.get('quality', 'ultra')
+        
+        if not song_ids or not isinstance(song_ids, list):
+            return {"success": False, "message": "Invalid or missing 'ids' array"}
+        
+        # Limit to 10 songs at a time
+        song_ids = song_ids[:10]
+        
+        logger.info(f"🔄 Pre-fetching {len(song_ids)} songs in background")
+        
+        # Fire and forget - resolve in background
+        from app.services.audio_resolver_service import resolve_audio_stream_background
+        for song_id in song_ids:
+            asyncio.create_task(resolve_audio_stream_background(song_id, quality))
+        
+        return success_response({
+            "prefetched": len(song_ids),
+            "message": f"Pre-fetching {len(song_ids)} songs in background"
+        })
+    except Exception as e:
+        logger.error(f"Prefetch error: {e}")
+        return {"success": False, "message": str(e)}

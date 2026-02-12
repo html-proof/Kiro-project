@@ -14,22 +14,26 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
     cache_key = f"stream:{video_id}:{quality}"
     cached = cache_get(cache_key)
     if cached:
-        logger.debug(f"⚡ Cache hit for audio stream: {video_id}")
+        logger.info(f"⚡ Cache hit for audio stream: {video_id} - INSTANT!")
         return cached
     
+    logger.info(f"🔍 Resolving {video_id} (not in cache, will take 2-5s)")
     target_bitrate = get_bitrate_for_quality(quality)
     
-    # Try with multiple strategies
+    # Try with multiple strategies - OPTIMIZED FOR SPEED
     strategies = [
-        # Strategy 1: Standard with android client
+        # Strategy 1: FASTEST - Skip webpage parsing, use android client
         {
             "quiet": True,
             "no_warnings": True,
             "format": "bestaudio/best",
+            "skip_download": True,
+            "no_check_certificate": True,
             "extractor_args": {
                 "youtube": {
                     "player_client": ["android", "web"],
-                    "player_skip": ["webpage", "configs"]
+                    "player_skip": ["webpage", "configs", "js"],
+                    "skip": ["hls", "dash"]
                 }
             },
         },
@@ -38,9 +42,11 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
             "quiet": True,
             "no_warnings": True,
             "format": "bestaudio/best",
+            "skip_download": True,
             "extractor_args": {
                 "youtube": {
                     "player_client": ["web"],
+                    "player_skip": ["webpage"]
                 }
             },
         },
@@ -49,6 +55,7 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
             "quiet": True,
             "no_warnings": True,
             "format": "bestaudio*",
+            "skip_download": True,
         }
     ]
     
@@ -91,9 +98,9 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
                     "format": best_format.get("ext", "m4a")
                 }
                 
-                # Cache for 15 minutes
-                cache_set(cache_key, result, 900)
-                logger.info(f"✅ Resolved audio stream for {video_id}: {result['bitrate']}kbps {result['format']} (strategy {i+1})")
+                # Cache for 4 HOURS (URLs typically valid for 6 hours)
+                cache_set(cache_key, result, 14400)
+                logger.info(f"✅ Resolved audio stream for {video_id}: {result['bitrate']}kbps {result['format']} (strategy {i+1}) - cached for 4h")
                 return result
                 
         except Exception as e:
