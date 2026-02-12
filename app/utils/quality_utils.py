@@ -9,18 +9,28 @@ def get_bitrate_for_quality(quality: str) -> int:
     return quality_map.get(quality, 128)
 
 def select_best_audio_format(formats: list, target_bitrate: int):
-    # FORCE M4A (itag=140) for most stable streaming
+    # 🔥 PRIORITY 1: FORCE itag=140 (m4a, 128kbps) - Most stable for mobile
+    # This is the most reliable format for ExoPlayer/just_audio
+    itag_140 = [f for f in formats if f.get("format_id") == "140"]
+    if itag_140:
+        return itag_140[0]
+    
+    # 🔥 PRIORITY 2: Any M4A audio-only format
     # M4A is more reliable than WEBM for mobile playback
     m4a_formats = [f for f in formats 
                    if f.get("acodec") != "none" 
                    and f.get("vcodec") == "none"
                    and f.get("ext") == "m4a"]
     
-    # If no M4A, try any audio-only format
+    # If no M4A, try any audio-only format (but prefer m4a/mp4 over webm)
     if not m4a_formats:
-        m4a_formats = [f for f in formats 
-                       if f.get("acodec") != "none" 
-                       and f.get("vcodec") == "none"]
+        audio_only = [f for f in formats 
+                      if f.get("acodec") != "none" 
+                      and f.get("vcodec") == "none"]
+        # Sort by extension preference: m4a > mp4 > opus > webm
+        ext_priority = {"m4a": 0, "mp4": 1, "opus": 2, "webm": 3}
+        audio_only.sort(key=lambda f: ext_priority.get(f.get("ext", ""), 99))
+        m4a_formats = audio_only
     
     # Last resort: any format with audio
     if not m4a_formats:
