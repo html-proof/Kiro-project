@@ -7,16 +7,23 @@ from app.firebase.firebase_auth import verify_token
 router = APIRouter()
 
 @router.get("/type")
-async def recommend_by_type(type: str = Query(...), language: str = Query("English")):
+async def recommend_by_type(type: str = Query(...), language: str = Query("")):
     """Get recommendations by music type (e.g., pop, rock, jazz)"""
-    query = build_youtube_search_query("", language, type)
+    # If no language specified, use trending query without language filter
+    if not language or language.strip() == "":
+        query = f"{type} trending songs"
+    else:
+        query = build_youtube_search_query("", language, type)
     results = await youtube_search_service.search_youtube(query, limit=20)
     return success_response(results)
 
 @router.get("/artist")
-async def recommend_by_artist(name: str = Query(...), language: str = Query("English")):
+async def recommend_by_artist(name: str = Query(...), language: str = Query("")):
     """Get recommendations for a specific artist"""
-    results = await recommendation_service.get_recommendations_by_artist(name, language)
+    # If no language specified, search without language filter
+    if not language or language.strip() == "":
+        language = None
+    results = await recommendation_service.get_recommendations_by_artist(name, language or "")
     return success_response(results)
 
 @router.get("/similar")
