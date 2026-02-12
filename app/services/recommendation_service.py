@@ -10,6 +10,33 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 profile_service = get_user_profile_service()
 
+def _get_current_year() -> int:
+    """Get current year dynamically"""
+    return datetime.now().year
+
+def _get_current_month() -> str:
+    """Get current month name"""
+    return datetime.now().strftime('%B')
+
+def _get_trending_query(language: str = None, mood: str = None) -> str:
+    """
+    Build dynamic trending query based on current date
+    Uses YouTube's trending algorithm keywords
+    """
+    current_year = _get_current_year()
+    current_month = _get_current_month()
+    
+    query_parts = []
+    if language:
+        query_parts.append(language)
+    if mood:
+        query_parts.append(mood)
+    
+    # Use YouTube trending keywords
+    query_parts.append(f"trending {current_month} {current_year}")
+    
+    return " ".join(query_parts)
+
 def _filter_already_played(results: list, played_song_ids: set) -> list:
     """Filter out songs user has already played"""
     filtered = [song for song in results if song.get('id') not in played_song_ids]
@@ -30,15 +57,16 @@ async def get_user_recommendations(uid: str) -> list:
     - Top played songs (for similarity)
     - Recent searches
     - FILTERED: Excludes already played songs
+    - DYNAMIC: Uses current date for trending content
     """
     try:
         # Get comprehensive user data
         user_data = await profile_service.get_recommendation_data(uid)
         
         if not user_data or not user_data.get('languages'):
-            # No profile data, return popular songs
-            logger.info(f"No profile data for {uid}, returning popular songs")
-            return await search_youtube("popular songs 2026", limit=30)
+            # No profile data, return trending songs
+            logger.info(f"No profile data for {uid}, returning trending songs")
+            return await search_youtube(_get_trending_query(), limit=30)
         
         # Get played song IDs for filtering
         play_history = await profile_service.get_play_history(uid, limit=200)
@@ -53,16 +81,18 @@ async def get_user_recommendations(uid: str) -> list:
         
         # Try multiple query variations to get fresh content
         all_results = []
+        current_year = _get_current_year()
+        current_month = _get_current_month()
         
-        # Query 1: Language + Mood + "new songs"
+        # Query 1: Language + Mood + "trending this month"
         if languages and moods:
-            query = f"{languages[0]} {moods[0]} new songs 2026"
+            query = f"{languages[0]} {moods[0]} trending {current_month} {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
-        # Query 2: Language + different mood
+        # Query 2: Language + different mood + "new songs"
         if languages and len(moods) > 1:
-            query = f"{languages[0]} {moods[1]} latest songs"
+            query = f"{languages[0]} {moods[1]} new songs {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -70,13 +100,13 @@ async def get_user_recommendations(uid: str) -> list:
         if top_songs:
             top_song_artist = top_songs[0].get('artist', '')
             if top_song_artist:
-                query = f"{top_song_artist} {languages[0] if languages else ''} songs"
+                query = f"{top_song_artist} {languages[0] if languages else ''} latest songs"
                 results = await search_youtube(query, limit=15, user_id=uid)
                 all_results.extend(_filter_already_played(results, played_song_ids))
         
-        # Query 4: Based on recent search but with "new" keyword
+        # Query 4: Based on recent search but with "trending" keyword
         if recent_searches:
-            query = f"{recent_searches[0]} new releases"
+            query = f"{recent_searches[0]} trending {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -91,13 +121,13 @@ async def get_user_recommendations(uid: str) -> list:
         # Shuffle for variety
         random.shuffle(unique_results)
         
-        logger.info(f"🎯 For You: {len(unique_results)} NEW songs for {uid}")
+        logger.info(f"🎯 For You: {len(unique_results)} NEW songs for {uid} ({current_month} {current_year})")
         return unique_results[:20]
         
     except Exception as e:
         logger.error(f"Failed to get personalized recommendations for {uid}: {e}")
-        # Fallback to popular songs
-        return await search_youtube("popular songs 2026", limit=30)
+        # Fallback to trending songs
+        return await search_youtube(_get_trending_query(), limit=30)
 
 async def get_daily_mix(uid: str) -> list:
     """
@@ -105,13 +135,16 @@ async def get_daily_mix(uid: str) -> list:
     - Uses daily seed for consistent results per day
     - Filters out already played songs
     - Mixes user preferences with discovery
+    - DYNAMIC: Uses current date for trending content
     """
     try:
         # Get user data
         user_data = await profile_service.get_recommendation_data(uid)
+        current_year = _get_current_year()
+        current_month = _get_current_month()
         
         if not user_data:
-            return await search_youtube("trending music 2026", limit=30)
+            return await search_youtube(_get_trending_query(), limit=30)
         
         # Get played song IDs for filtering
         play_history = await profile_service.get_play_history(uid, limit=200)
@@ -127,16 +160,16 @@ async def get_daily_mix(uid: str) -> list:
         
         all_results = []
         
-        # Mix 1: Random mood from user preferences
+        # Mix 1: Random mood from user preferences with current trends
         if moods:
             random_mood = random.choice(moods)
-            query = f"{languages[0] if languages else ''} {random_mood} songs"
+            query = f"{languages[0] if languages else ''} {random_mood} trending {current_month}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
         # Mix 2: Discover new artists in user's language
         if languages:
-            query = f"{languages[0]} new artists 2026"
+            query = f"{languages[0]} new artists {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -147,9 +180,9 @@ async def get_daily_mix(uid: str) -> list:
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
-        # Mix 4: Trending in user's language
+        # Mix 4: Trending in user's language RIGHT NOW
         if languages:
-            query = f"{languages[0]} trending now"
+            query = _get_trending_query(languages[0])
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -165,12 +198,12 @@ async def get_daily_mix(uid: str) -> list:
         random.seed(daily_seed)
         random.shuffle(unique_results)
         
-        logger.info(f"🎵 Daily Mix: {len(unique_results)} NEW songs for {uid} (seed: {daily_seed})")
+        logger.info(f"🎵 Daily Mix: {len(unique_results)} NEW songs for {uid} ({current_month} {current_year}, seed: {daily_seed})")
         return unique_results[:20]
         
     except Exception as e:
         logger.error(f"Failed to get daily mix for {uid}: {e}")
-        return await search_youtube("trending music 2026", limit=30)
+        return await search_youtube(_get_trending_query(), limit=30)
 
 async def get_recommendations_by_artist(artist_name: str, language: str = "English") -> list:
     """Get recommendations for a specific artist"""
@@ -181,8 +214,8 @@ async def get_recommendations_by_artist(artist_name: str, language: str = "Engli
 async def get_similar_songs(video_id: str, uid: str = None) -> list:
     """Get songs similar to the specified video"""
     # In a real implementation, you'd fetch the video details first
-    # For now, we'll return popular songs as a fallback
-    results = await search_youtube("popular music", limit=20)
+    # For now, we'll return trending songs as a fallback
+    results = await search_youtube(_get_trending_query(), limit=20)
     return results
 
 async def get_because_you_liked_recommendations(uid: str) -> list:
@@ -191,13 +224,14 @@ async def get_because_you_liked_recommendations(uid: str) -> list:
     - Based on top played songs
     - Filters out already played songs
     - Discovers similar new content
+    - DYNAMIC: Uses current trends
     """
     try:
         # Get user's top songs and preferences
         user_data = await profile_service.get_recommendation_data(uid)
         
         if not user_data:
-            return await search_youtube("trending music 2026", limit=30)
+            return await search_youtube(_get_trending_query(), limit=30)
         
         # Get played song IDs for filtering
         play_history = await profile_service.get_play_history(uid, limit=200)
@@ -210,25 +244,19 @@ async def get_because_you_liked_recommendations(uid: str) -> list:
         all_results = []
         
         if not top_songs:
-            # No play history, use preferences only
-            query_parts = []
-            if languages:
-                query_parts.append(languages[0])
-            if moods:
-                query_parts.append(moods[0])
-            query_parts.append("trending songs")
-            query = " ".join(query_parts)
-            results = await search_youtube(query, limit=20, user_id=uid)
-            return _filter_already_played(results, played_song_ids)
+            # No play history, use preferences with trending
+            return await search_youtube(_get_trending_query(
+                language=languages[0] if languages else None,
+                mood=moods[0] if moods else None
+            ), limit=20, user_id=uid)
         
         # Get similar songs for top 3 played songs
         for i, song in enumerate(top_songs[:3]):
             artist = song.get('artist', '')
-            title = song.get('title', '')
             
             if artist:
-                # Search for similar artists
-                query = f"{artist} similar songs {languages[0] if languages else ''}"
+                # Search for similar artists with current year
+                query = f"{artist} similar songs {languages[0] if languages else ''} {_get_current_year()}"
                 results = await search_youtube(query, limit=15, user_id=uid)
                 all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -248,12 +276,13 @@ async def get_because_you_liked_recommendations(uid: str) -> list:
         
     except Exception as e:
         logger.error(f"Failed to get 'because you liked' for {uid}: {e}")
-        return await search_youtube("trending music 2026", limit=30)
+        return await search_youtube(_get_trending_query(), limit=30)
 
 async def get_mood_based_recommendations(uid: str, mood: str) -> list:
     """
     Get recommendations based on specific mood
     - Filters out already played songs
+    - DYNAMIC: Uses current trends
     """
     try:
         user_data = await profile_service.get_recommendation_data(uid)
@@ -263,13 +292,12 @@ async def get_mood_based_recommendations(uid: str, mood: str) -> list:
         play_history = await profile_service.get_play_history(uid, limit=200)
         played_song_ids = {play.get('song_id') for play in play_history if play.get('song_id')}
         
-        query_parts = []
-        if languages:
-            query_parts.append(languages[0])
-        query_parts.append(mood)
-        query_parts.append("new songs")
+        # Use trending query with mood
+        query = _get_trending_query(
+            language=languages[0] if languages else None,
+            mood=mood
+        )
         
-        query = " ".join(query_parts)
         logger.info(f"😊 Mood-based query for {uid}: {query}")
         
         results = await search_youtube(query, limit=30, user_id=uid)
@@ -287,12 +315,14 @@ async def get_discover_weekly(uid: str) -> list:
     - Completely new songs user hasn't heard
     - Based on listening patterns
     - Changes weekly
+    - DYNAMIC: Uses current date
     """
     try:
         user_data = await profile_service.get_recommendation_data(uid)
+        current_year = _get_current_year()
         
         if not user_data:
-            return await search_youtube("new music releases", limit=20)
+            return await search_youtube(f"new music releases {current_year}", limit=20)
         
         # Get played song IDs for filtering
         play_history = await profile_service.get_play_history(uid, limit=200)
@@ -303,15 +333,15 @@ async def get_discover_weekly(uid: str) -> list:
         
         all_results = []
         
-        # Discover 1: New releases in user's language
+        # Discover 1: New releases in user's language THIS WEEK
         if languages:
-            query = f"{languages[0]} new releases this week"
+            query = f"{languages[0]} new releases this week {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
         # Discover 2: Indie/underground in user's language
         if languages:
-            query = f"{languages[0]} indie songs 2026"
+            query = f"{languages[0]} indie songs {current_year}"
             results = await search_youtube(query, limit=15, user_id=uid)
             all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -320,7 +350,7 @@ async def get_discover_weekly(uid: str) -> list:
             for song in top_songs[:2]:
                 artist = song.get('artist', '')
                 if artist:
-                    query = f"artists like {artist}"
+                    query = f"artists like {artist} {current_year}"
                     results = await search_youtube(query, limit=5, user_id=uid)
                     all_results.extend(_filter_already_played(results, played_song_ids))
         
@@ -334,9 +364,9 @@ async def get_discover_weekly(uid: str) -> list:
         
         random.shuffle(unique_results)
         
-        logger.info(f"🔍 Discover Weekly: {len(unique_results)} NEW songs for {uid}")
+        logger.info(f"🔍 Discover Weekly: {len(unique_results)} NEW songs for {uid} ({current_year})")
         return unique_results[:20]
         
     except Exception as e:
         logger.error(f"Failed to get discover weekly for {uid}: {e}")
-        return await search_youtube("new music releases", limit=20)
+        return await search_youtube(f"new music releases {_get_current_year()}", limit=20)
