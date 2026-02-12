@@ -206,12 +206,10 @@ class SearchService:
             return 0
         if seconds < 90:
             return -40  # Too short, likely not a full song
-        if 120 <= seconds <= 420:
-            return 30  # Sweet spot (2-7 minutes)
-        if 421 <= seconds <= 600:
-            return 10  # Acceptable (7-10 minutes)
-        if seconds > 900:
-            return -30  # Too long, likely not a song
+        if 120 <= seconds <= 300:  # 2-5 minutes (UPDATED: max 5 minutes)
+            return 30  # Sweet spot for songs
+        if seconds > 300:  # More than 5 minutes
+            return -100  # Exclude: Too long, likely not a song
         return 0
     
     def get_official_score(self, channel: str, title: str) -> int:
@@ -324,6 +322,10 @@ class SearchService:
                 channel = entry.get('uploader', '').strip()
                 duration = entry.get('duration', 0)
                 view_count = entry.get('view_count', 0)
+                
+                # HARD FILTER: Exclude songs longer than 5 minutes (300 seconds)
+                if duration and duration > 300:
+                    continue
                 
                 # Filter spam and non-music content
                 if self.contains_negative(title, search_query):
