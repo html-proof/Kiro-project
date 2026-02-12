@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 COOKIES_FILE = os.path.join(os.path.dirname(__file__), '..', '..', 'cookies.txt')
 USE_COOKIES = os.path.exists(COOKIES_FILE)
 
-async def resolve_audio_stream(video_id: str, quality: str = "saver") -> dict:
+async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
     cache_key = f"stream:{video_id}:{quality}"
     cached = cache_get(cache_key)
     if cached:

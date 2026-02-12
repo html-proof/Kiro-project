@@ -50,8 +50,8 @@ async def search_music(
     for result in results:
         if result.get('id'):
             # Construct the full stream URL that points to our play endpoint
-            # Use 'high' quality by default for better audio experience
-            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=high"
+            # Use 'ultra' quality (48kbps) by default for fastest fetching and lowest data usage
+            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=ultra"
             logger.info(f"Generated streamUrl for {result.get('title')}: {result['streamUrl']}")
     
     logger.info(f"Returning {len(results)} results")
@@ -69,7 +69,7 @@ async def resolve_audio(id: str = Query(...), quality: str = Query("high")):
 async def play_audio(
     request: Request,
     id: str = Query(None),
-    quality: str = Query("high"),
+    quality: str = Query("ultra"),
     range: Optional[str] = Header(None)
 ):
     # For POST requests, try to get id from query params or body

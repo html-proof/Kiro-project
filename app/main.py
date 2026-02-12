@@ -93,7 +93,7 @@ async def ping():
 async def root_play_audio(
     request: Request,
     id: str = Query(None),
-    quality: str = Query("high")
+    quality: str = Query("ultra")
 ):
     """Fallback streaming endpoint - handles both GET and POST"""
     from app.services.audio_resolver_service import resolve_audio_stream
@@ -104,13 +104,13 @@ async def root_play_audio(
         try:
             body = await request.json()
             id = body.get('id') or body.get('video_id')
-            quality = body.get('quality', 'saver')
+            quality = body.get('quality', 'ultra')
         except:
             # Try form data
             try:
                 form = await request.form()
                 id = form.get('id') or form.get('video_id')
-                quality = form.get('quality', 'saver')
+                quality = form.get('quality', 'ultra')
             except:
                 pass
     
