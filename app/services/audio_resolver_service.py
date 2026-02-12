@@ -14,7 +14,7 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
     cache_key = f"stream:{video_id}:{quality}"
     cached = cache_get(cache_key)
     if cached:
-        logger.debug(f"Cache hit for audio stream: {video_id}")
+        logger.debug(f"⚡ Cache hit for audio stream: {video_id}")
         return cached
     
     target_bitrate = get_bitrate_for_quality(quality)
@@ -40,7 +40,6 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
     # Add cookies if available
     if USE_COOKIES:
         ydl_opts["cookiefile"] = COOKIES_FILE
-        logger.info(f"Using cookies from: {COOKIES_FILE}")
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -62,9 +61,73 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
                 "bitrate": best_format.get("abr", target_bitrate),
                 "format": best_format.get("ext", "m4a")
             }
+            # Cache for 15 minutes (longer for instant playback)
             cache_set(cache_key, result, 900)
-            logger.info(f"Resolved audio stream for {video_id}: {result['bitrate']}kbps {result['format']}")
+            logger.info(f"✅ Resolved audio stream for {video_id}: {result['bitrate']}kbps {result['format']}")
             return result
     except Exception as e:
         logger.error(f"Failed to resolve audio stream for {video_id}: {e}")
         return None
+
+# Background resolver for pre-caching
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+_executor = ThreadPoolExecutor(max_workers=5)
+
+async def resolve_audio_stream_background(video_id: str, quality: str = "ultra"):
+    """Resolve stream URL in background without blocking"""
+    loop = asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(_executor, _resolve_sync, video_id, quality)
+    except Exception as e:
+        logger.error(f"Background resolution failed for {video_id}: {e}")
+
+def _resolve_sync(video_id: str, quality: str):
+    """Synchronous resolver for background execution"""
+    cache_key = f"stream:{video_id}:{quality}"
+    
+    # Check cache first
+    if cache_get(cache_key):
+        return
+    
+    target_bitrate = get_bitrate_for_quality(quality)
+    
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "format": "bestaudio/best",
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "web"],
+                "player_skip": ["webpage", "configs"]
+            }
+        },
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-us,en;q=0.5",
+            "Sec-Fetch-Mode": "navigate"
+        }
+    }
+    
+    if USE_COOKIES:
+        ydl_opts["cookiefile"] = COOKIES_FILE
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            formats = info.get("formats", [])
+            
+            if formats:
+                best_format = select_best_audio_format(formats, target_bitrate)
+                if best_format:
+                    result = {
+                        "stream_url": best_format.get("url"),
+                        "bitrate": best_format.get("abr", target_bitrate),
+                        "format": best_format.get("ext", "m4a")
+                    }
+                    cache_set(cache_key, result, 900)
+                    logger.info(f"🔄 Background resolved: {video_id}")
+    except Exception as e:
+        logger.error(f"Background resolution error for {video_id}: {e}")

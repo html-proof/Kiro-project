@@ -9,6 +9,7 @@ from app.services.audio_transcoder_service import transcode_audio_stream_mp3
 from app.utils.response_utils import success_response
 from typing import Optional
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ async def search_music(
     - Blocks spam music types (8D, slowed+reverb, etc.)
     - Prioritizes official channels and trusted labels
     - Personalizes results based on user's liked artists
+    - Pre-resolves first 5 songs for instant playback
     """
     results = await search_youtube(q, limit=10, user_id=user_id)
     
@@ -44,17 +46,20 @@ async def search_music(
     else:
         base_url = "http://localhost:8000"
     
-    logger.info(f"Search request base_url: {base_url}")
-    logger.info(f"Request headers: {dict(request.headers) if request else 'No request'}")
-    
     for result in results:
         if result.get('id'):
             # Construct the full stream URL that points to our play endpoint
             # Use 'ultra' quality (48kbps) by default for fastest fetching and lowest data usage
             result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=ultra"
-            logger.info(f"Generated streamUrl for {result.get('title')}: {result['streamUrl']}")
     
-    logger.info(f"Returning {len(results)} results")
+    # 🔥 PRE-RESOLVE first 5 songs in background for instant playback
+    from app.services.audio_resolver_service import resolve_audio_stream_background
+    for i, result in enumerate(results[:5]):
+        if result.get('id'):
+            # Fire and forget - don't wait
+            asyncio.create_task(resolve_audio_stream_background(result['id'], 'ultra'))
+    
+    logger.info(f"✅ Search complete: {len(results)} results, pre-resolving first 5")
     return success_response(results)
 
 @router.get("/resolve")
