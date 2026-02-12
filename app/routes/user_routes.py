@@ -4,11 +4,16 @@ from app.firebase.firebase_auth import verify_token
 from app.firestore.firestore_collections import get_user_ref
 from app.services.user_history_service import add_to_history, get_user_history, update_progress
 from app.services.user_like_service import add_like, get_user_likes, remove_like
+from app.services.user_profile_service import get_user_profile_service
 # Temporarily disabled due to import issue
 # from app.services.recommendation_service import get_user_recommendations
 from app.utils.response_utils import success_response
 
 router = APIRouter()
+
+class OnboardingRequest(BaseModel):
+    languages: list = Field(default_factory=list)
+    moods: list = Field(default_factory=list)
 
 class PreferencesRequest(BaseModel):
     selected_languages: list = []
@@ -47,6 +52,39 @@ class ProgressRequest(BaseModel):
     
     def get_video_id(self):
         return self.video_id or self.id
+
+@router.post("/onboarding")
+async def onboarding(request: OnboardingRequest, token: dict = Depends(verify_token)):
+    """
+    Handle user onboarding - save language and mood preferences
+    Called once when user first logs in
+    """
+    try:
+        uid = token["uid"]
+        profile_service = get_user_profile_service()
+        
+        # Save preferences to Firebase Realtime Database
+        success = await profile_service.set_user_preferences(
+            user_id=uid,
+            languages=request.languages,
+            moods=request.moods
+        )
+        
+        if success:
+            return success_response({
+                "message": "Onboarding completed successfully",
+                "languages": request.languages,
+                "moods": request.moods
+            })
+        else:
+            return success_response({
+                "message": "Onboarding completed but preferences save failed"
+            })
+    except Exception as e:
+        print(f"Error in onboarding: {e}")
+        return success_response({
+            "message": "Onboarding completed with errors"
+        })
 
 @router.post("/preferences")
 async def save_preferences(request: PreferencesRequest, token: dict = Depends(verify_token)):
