@@ -11,39 +11,46 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    function isValidUser() {
-      return isAuthenticated() && 
-             request.resource.data.uid == request.auth.uid;
-    }
+    // ============================================================================
+    // ORGANIZED STRUCTURE: users/{userId}/...
+    // ============================================================================
     
-    // Users collection
     match /users/{userId} {
-      // Allow read if authenticated and is owner
-      allow read: if isOwner(userId);
+      // Allow user to read/write their own root document
+      allow read, write: if isOwner(userId);
       
-      // Allow create only if authenticated and creating own profile
-      allow create: if isAuthenticated() && 
-                       request.auth.uid == userId &&
-                       request.resource.data.uid == request.auth.uid;
+      // Profile subcollection
+      match /profile/{document} {
+        allow read, write: if isOwner(userId);
+      }
       
-      // Allow update only if owner and not changing uid
-      allow update: if isOwner(userId) && 
-                       request.resource.data.uid == resource.data.uid;
+      // Preferences subcollection
+      match /preferences/{document} {
+        allow read, write: if isOwner(userId);
+      }
       
-      // Prevent deletion of user profiles
-      allow delete: if false;
+      // Playback state subcollection
+      match /playback/{document} {
+        allow read, write: if isOwner(userId);
+      }
       
-      // Likes subcollection
-      match /likes/{videoId} {
+      // Play history subcollection
+      match /history/{songId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && 
-                         request.resource.data.video_id == videoId;
+        allow create: if isOwner(userId);
         allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
       }
       
-      // History subcollection
-      match /history/{historyId} {
+      // Search history subcollection
+      match /searches/{searchId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow delete: if isOwner(userId);
+      }
+      
+      // Likes subcollection
+      match /likes/{songId} {
         allow read: if isOwner(userId);
         allow create: if isOwner(userId);
         allow update: if isOwner(userId);
@@ -53,62 +60,45 @@ service cloud.firestore {
       // Playlists subcollection
       match /playlists/{playlistId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && 
-                         request.resource.data.playlist_id == playlistId;
+        allow create: if isOwner(userId);
         allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
         
         // Playlist songs subcollection
-        match /songs/{videoId} {
+        match /songs/{songId} {
           allow read: if isOwner(userId);
-          allow create: if isOwner(userId) && 
-                           request.resource.data.video_id == videoId;
+          allow create: if isOwner(userId);
           allow update: if isOwner(userId);
           allow delete: if isOwner(userId);
         }
       }
       
-      // Auto playlists subcollection
-      match /auto_playlists/{playlistId} {
+      // Recommendations subcollection
+      match /recommendations/{recommendationId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId) && 
-                         request.resource.data.playlist_id == playlistId;
+        allow create: if isOwner(userId);
         allow update: if isOwner(userId);
         allow delete: if isOwner(userId);
-        
-        // Auto playlist songs subcollection
-        match /songs/{videoId} {
-          allow read: if isOwner(userId);
-          allow create: if isOwner(userId) && 
-                           request.resource.data.video_id == videoId;
-          allow update: if isOwner(userId);
-          allow delete: if isOwner(userId);
-        }
       }
-    }
-    
-    // User data collection (for Flutter app persistence)
-    match /user_data/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
       
-      // Allow all subcollections under user_data
+      // Allow all other subcollections under user
       match /{document=**} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
     }
     
-    // Likes collection (for Flutter app)
-    match /likes/{userId} {
-      allow read: if isOwner(userId);
-      allow write: if isOwner(userId);
-      
-      // Songs subcollection
-      match /songs/{songId} {
-        allow read: if isOwner(userId);
-        allow write: if isOwner(userId);
-      }
+    // ============================================================================
+    // LEGACY SUPPORT (for backward compatibility)
+    // ============================================================================
+    
+    // Old user_data structure
+    match /user_data/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
+    }
+    
+    // Old likes structure
+    match /likes/{userId}/{document=**} {
+      allow read, write: if isOwner(userId);
     }
     
     // Deny all other access
