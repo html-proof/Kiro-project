@@ -18,7 +18,10 @@ class OnboardingRequest(BaseModel):
 class PreferencesRequest(BaseModel):
     selected_languages: list = []
     selected_artists: list = []
-    selected_moods: list = []  # Add support for moods
+    selected_moods: list = []
+    # Support both naming conventions for compatibility
+    languages: list = []
+    moods: list = []
 
 class PlayRequest(BaseModel):
     video_id: str = Field(None, alias="videoId")
@@ -114,13 +117,77 @@ async def onboarding(request: OnboardingRequest, token: dict = Depends(verify_to
 
 @router.post("/preferences")
 async def save_preferences(request: PreferencesRequest, token: dict = Depends(verify_token)):
+    """
+    Save user preferences including languages, moods, and artists
+    Supports both onboarding and settings updates
+    """
     uid = token["uid"]
     user_ref = get_user_ref(uid)
-    user_ref.update({
-        "selected_languages": request.selected_languages,
-        "selected_artists": request.selected_artists
-    })
-    return success_response({}, "Preferences saved")
+    
+    # Merge both naming conventions
+    languages = request.selected_languages or request.languages
+    moods = request.selected_moods or request.moods
+    artists = request.selected_artists
+    
+    # Build update data
+    update_data = {}
+    if languages:
+        update_data["selected_languages"] = languages
+    if moods:
+        update_data["selected_moods"] = moods
+    if artists:
+        update_data["selected_artists"] = artists
+    
+    # Also save in preferences object for compatibility
+    update_data["preferences"] = {
+        "languages": languages,
+        "moods": moods,
+        "artists": artists,
+        "updated_at": datetime.utcnow().isoformat()
+    }
+    
+    user_ref.set(update_data, merge=True)
+    return success_response({
+        "message": "Preferences saved successfully",
+        "languages": languages,
+        "moods": moods,
+        "artists": artists
+    }, "Preferences saved")
+
+@router.get("/preferences")
+async def get_preferences(token: dict = Depends(verify_token)):
+    """
+    Get user preferences and onboarding status
+    """
+    try:
+        uid = token["uid"]
+        user_ref = get_user_ref(uid)
+        user_doc = user_ref.get()
+        
+        if user_doc.exists:
+            user_data = user_doc.to_dict()
+            preferences = user_data.get('preferences', {})
+            return success_response({
+                "completed": bool(preferences.get('languages') or preferences.get('moods')),
+                "preferences": preferences,
+                "selected_languages": user_data.get('selected_languages', []),
+                "selected_moods": user_data.get('selected_moods', []),
+                "selected_artists": user_data.get('selected_artists', [])
+            })
+        else:
+            return success_response({
+                "completed": False,
+                "preferences": {},
+                "selected_languages": [],
+                "selected_moods": [],
+                "selected_artists": []
+            })
+    except Exception as e:
+        print(f"Error getting preferences: {e}")
+        return success_response({
+            "completed": False,
+            "preferences": {}
+        })
 
 @router.post("/play")
 async def track_play(request: PlayRequest, token: dict = Depends(verify_token)):
