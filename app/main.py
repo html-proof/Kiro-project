@@ -53,12 +53,13 @@ async def startup_event():
 
 # Import routes after app is created to avoid circular imports
 try:
-    from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes, websocket_routes, profile_routes
+    from app.routes import auth_routes, user_routes, music_routes, recommend_routes, playlist_routes, sync_routes, device_routes, websocket_routes, profile_routes, smart_recommend_routes
     
     app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
     app.include_router(user_routes.router, prefix="/user", tags=["User"])
     app.include_router(music_routes.router, prefix="/music", tags=["Music"])
     app.include_router(recommend_routes.router, prefix="/recommend", tags=["Recommendations"])
+    app.include_router(smart_recommend_routes.router, prefix="/recommend", tags=["Smart Recommendations"])
     app.include_router(playlist_routes.router, prefix="/playlist", tags=["Playlists"])
     app.include_router(sync_routes.router, prefix="/sync", tags=["Sync"])
     app.include_router(device_routes.router, prefix="/device", tags=["Device"])

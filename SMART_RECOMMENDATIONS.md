@@ -1,303 +1,474 @@
-# 🎯 Smart Recommendations with Deduplication
+# Smart Recommendation System 🎯
 
-## Problem Solved
+## Overview
 
-Users were getting the same songs repeatedly in "For You" and "Daily Mix" recommendations. Now the system:
-- ✅ Filters out already played songs
-- ✅ Provides fresh content every time
-- ✅ Daily Mix changes every day
-- ✅ Helps users discover new music
+Advanced recommendation engine that continuously searches and recommends audio based on:
+- ✅ User mood preferences
+- ✅ Current date and time (morning/afternoon/evening/night)
+- ✅ Trusted YouTube channels
+- ✅ View counts and popularity
+- ✅ User listening history (excludes already played)
+- ✅ Seasonal context (winter/spring/summer/fall)
+- ✅ Weekend vs weekday
 
-## New Features
+## Features
 
-### 1. Smart Deduplication
-All recommendation endpoints now filter out songs the user has already played:
+### 1. Time-Aware Recommendations ⏰
 
-```python
-# Get user's play history (last 200 songs)
-play_history = await profile_service.get_play_history(uid, limit=200)
-played_song_ids = {play.get('song_id') for play in play_history}
+The system adjusts recommendations based on time of day:
 
-# Filter out already played songs
-filtered_results = _filter_already_played(results, played_song_ids)
+**Morning (5 AM - 12 PM)**
+- Energetic, Happy, Motivational, Workout, Upbeat
+
+**Afternoon (12 PM - 5 PM)**
+- Focus, Chill, Relaxing, Romantic, Smooth
+
+**Evening (5 PM - 9 PM)**
+- Party, Dance, Upbeat, Romantic, Energetic
+
+**Night (9 PM - 5 AM)**
+- Chill, Relaxing, Sad, Romantic, Calm
+
+### 2. View-Based Quality Filtering 📊
+
+Three quality levels:
+
+**High Quality** (1M+ views)
+- Premium content from major labels
+- Verified hits and popular songs
+- Best for mainstream listeners
+
+**Medium Quality** (100K+ views) - DEFAULT
+- Popular content with proven engagement
+- Balance between quality and discovery
+- Recommended for most users
+
+**Emerging** (10K+ views)
+- Discover new and upcoming artists
+- Fresh content before it goes viral
+- Best for early adopters
+
+### 3. Trusted Channel Filtering 🏆
+
+Prioritizes content from:
+
+**Global Labels**
+- VEVO, Sony Music, Universal Music, Warner Records
+- Atlantic Records, Republic Records, Interscope
+- Capitol Records, RCA Records, Columbia Records
+
+**Indian Labels**
+- T-Series, Zee Music, Saregama, Tips Official
+- YRF, Times Music, Sony Music India, Think Music
+- Aditya Music, Lahari Music, Anand Audio
+
+**K-Pop / J-Pop**
+- HYBE Labels, SM Entertainment, JYP Entertainment
+- YG Entertainment, Stone Music, Avex
+
+**Regional Labels**
+- Rotana Music, Platinum Records, Mazzika
+- Spinnin' Records, Armada Music
+
+### 4. Spam Filtering 🚫
+
+Automatically removes:
+- Movie trailers, teasers, scenes
+- News, interviews, speeches
+- Remixes, DJ mixes, mashups (unless requested)
+- 8D audio, slowed/reverb versions
+- Karaoke, instrumental versions
+- TikTok edits, status videos
+
+### 5. Smart Query Building 🔍
+
+Builds intelligent search queries using:
+- User's language preferences
+- Mood keywords (18 different moods)
+- Current month and year
+- Trending keywords
+- Weekend/weekday context
+- Seasonal context
+
+Example queries:
 ```
-
-### 2. Daily Mix (Changes Every Day)
-Generates consistent recommendations per day using daily seed:
-
-```python
-# Generate seed based on user ID + today's date
-today = datetime.utcnow().strftime('%Y-%m-%d')
-seed = hash(f"{uid}_{today}") % 10000
-
-# Same results all day, different tomorrow
-random.seed(seed)
+"Tamil romantic trending February 2025 official"
+"English energetic weekend hits 2025 official"
+"Hindi party trending December 2024 official"
 ```
-
-### 3. Discover Weekly
-Completely new songs user hasn't heard:
-- New releases in user's language
-- Indie/underground discoveries
-- Similar artists to favorites
 
 ## API Endpoints
 
-### 1. For You (Fresh Content)
+### 1. Get Smart Recommendations
+
 ```http
-GET /recommend/for-you?uid=USER123
+GET /recommend/smart/recommendations
 ```
 
-Returns:
-- Songs based on user preferences
-- Filtered: Excludes already played songs
-- Multiple query variations for variety
-- Shuffled for freshness
+**Query Parameters:**
+- `limit` (int, default: 30): Number of recommendations (1-100)
+- `quality` (string, default: "medium_quality"): Quality level
+  - `high_quality`: 1M+ views
+  - `medium_quality`: 100K+ views
+  - `emerging`: 10K+ views
 
-### 2. Daily Mix (Changes Daily)
-```http
-GET /recommend/daily-mix?uid=USER123
+**Response:**
+```json
+{
+  "success": true,
+  "recommendations": [
+    {
+      "id": "video_id",
+      "title": "Song Title",
+      "channel": "Channel Name",
+      "views": 1500000,
+      "duration": "3:45",
+      "thumbnail": "url",
+      "trust_score": 90
+    }
+  ],
+  "count": 30,
+  "quality_level": "medium_quality",
+  "context": {
+    "year": 2025,
+    "month": "February",
+    "day": 12,
+    "weekday": "Thursday",
+    "time_of_day": "evening",
+    "is_weekend": false,
+    "season": "winter"
+  }
+}
 ```
 
-Returns:
-- Consistent results per day
-- Different results tomorrow
-- Mix of preferences + discovery
-- Filtered: Excludes already played songs
+### 2. Get Continuous Feed (Infinite Scroll)
 
-### 3. Because You Liked (Similar Content)
 ```http
-GET /recommend/because-liked?uid=USER123
+GET /recommend/smart/feed
 ```
 
-Returns:
-- Based on top played songs
-- Similar artists and songs
-- Filtered: Excludes already played songs
+**Query Parameters:**
+- `page` (int, default: 1): Page number
+- `page_size` (int, default: 20): Items per page (1-50)
 
-### 4. Discover Weekly (New Discoveries)
-```http
-GET /recommend/discover-weekly?uid=USER123
+**Response:**
+```json
+{
+  "success": true,
+  "songs": [...],
+  "page": 1,
+  "page_size": 20,
+  "total": 20,
+  "has_more": true,
+  "context": {...}
+}
 ```
 
-Returns:
-- New releases in user's language
-- Indie/underground songs
-- Similar artists to favorites
-- Completely fresh content
+### 3. Get Time Context
 
-### 5. Mood-Based (Filtered)
 ```http
-GET /recommend/mood?uid=USER123&mood=Happy
+GET /recommend/smart/time-context
 ```
 
-Returns:
-- Songs matching the mood
-- In user's preferred language
-- Filtered: Excludes already played songs
+**Response:**
+```json
+{
+  "success": true,
+  "context": {
+    "year": 2025,
+    "month": "February",
+    "time_of_day": "evening",
+    "is_weekend": false,
+    "season": "winter"
+  },
+  "recommended_moods": ["Party", "Dance", "Upbeat", "Romantic", "Energetic"],
+  "message": "It's evening on Thursday, February 12, 2025"
+}
+```
+
+### 4. Get Quality Stats
+
+```http
+GET /recommend/smart/quality-stats
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "quality_levels": {
+    "high_quality": {
+      "min_views": 1000000,
+      "description": "Premium content with 1M+ views"
+    },
+    "medium_quality": {
+      "min_views": 100000,
+      "description": "Popular content with 100K+ views (default)"
+    },
+    "emerging": {
+      "min_views": 10000,
+      "description": "Emerging content with 10K+ views"
+    }
+  },
+  "trusted_channels": {
+    "global_labels": 18,
+    "indian_labels": 18,
+    "east_asian_labels": 7,
+    "regional_labels": 6,
+    "total_trusted": 49
+  }
+}
+```
 
 ## How It Works
 
-### For You Algorithm:
-```
-1. Get user preferences (languages, moods)
-2. Get play history (last 200 songs)
-3. Extract played song IDs
-4. Run multiple queries:
-   - Language + Mood + "new songs"
-   - Language + different mood
-   - Similar to top song
-   - Based on recent search
-5. Filter out already played songs
-6. Deduplicate by song ID
-7. Shuffle for variety
-8. Return 20 fresh songs
-```
+### Recommendation Flow
 
-### Daily Mix Algorithm:
-```
-1. Get user preferences
-2. Get play history
-3. Generate daily seed (user_id + date)
-4. Run mixed queries:
-   - Random mood from preferences
-   - New artists in language
-   - Similar to random top song
-   - Trending in language
-5. Filter out already played songs
-6. Deduplicate
-7. Shuffle with daily seed
-8. Return 20 fresh songs
-```
+1. **Get User Profile**
+   - Fetch user's language and mood preferences
+   - Get listening history (last 200 songs)
 
-### Deduplication Logic:
-```python
-def _filter_already_played(results, played_song_ids):
-    """Remove songs user has already played"""
-    filtered = [
-        song for song in results 
-        if song.get('id') not in played_song_ids
-    ]
-    return filtered
-```
+2. **Determine Time Context**
+   - Current time of day (morning/afternoon/evening/night)
+   - Current date (year, month, day, weekday)
+   - Season (winter/spring/summer/fall)
+   - Weekend vs weekday
 
-## Benefits
+3. **Filter Moods by Time**
+   - Match user moods with time-appropriate moods
+   - Example: If it's night and user likes "Party", also suggest "Chill"
 
-### For Users:
-- ✅ Always fresh content
-- ✅ No repeated songs
-- ✅ Discover new music daily
-- ✅ Personalized to their taste
-- ✅ Variety in recommendations
+4. **Build Smart Queries**
+   - Combine language + mood + trending keywords
+   - Add temporal context (month, year, weekend)
+   - Include "official" to prefer official releases
 
-### For Engagement:
-- ✅ Users explore more songs
-- ✅ Longer listening sessions
-- ✅ Better discovery experience
-- ✅ Reduced skip rate
+5. **Search YouTube**
+   - Execute multiple queries for variety
+   - Search for each mood + language combination
 
-### For Discovery:
-- ✅ Expands user's music library
-- ✅ Introduces new artists
-- ✅ Keeps content fresh
-- ✅ Prevents recommendation fatigue
+6. **Apply Filters**
+   - Remove spam and non-music content
+   - Filter by trusted channels (trust score ≥ 30)
+   - Filter by view count (based on quality level)
+   - Exclude already played songs
 
-## Example Flow
+7. **Sort by Quality**
+   - Calculate quality score: 60% trust + 40% views
+   - Sort results by quality score
 
-### Day 1:
-```
-User opens "For You"
-    ↓
-Backend fetches play history (50 songs played)
-    ↓
-Generates recommendations
-    ↓
-Filters out those 50 songs
-    ↓
-Returns 20 NEW songs
-    ↓
-User plays 5 of them
-```
+8. **Return Results**
+   - Deduplicate by song ID
+   - Return top N results
 
-### Day 2:
-```
-User opens "Daily Mix"
-    ↓
-Backend fetches play history (55 songs played now)
-    ↓
-Generates recommendations with new daily seed
-    ↓
-Filters out those 55 songs
-    ↓
-Returns 20 DIFFERENT NEW songs
-    ↓
-User discovers fresh content
-```
+## Usage Examples
 
-## Query Variations
+### Example 1: Morning Workout Playlist
 
-### For You Queries:
-1. `{language} {mood} new songs 2024`
-2. `{language} {different_mood} latest songs`
-3. `{top_artist} {language} songs`
-4. `{recent_search} new releases`
+**User Profile:**
+- Languages: English, Tamil
+- Moods: Energetic, Workout, Happy
+- Time: 7:00 AM (morning)
 
-### Daily Mix Queries:
-1. `{language} {random_mood} songs`
-2. `{language} new artists 2024`
-3. `{random_top_artist} similar artists`
-4. `{language} trending now`
+**System Behavior:**
+- Prioritizes: Energetic, Workout, Happy (all match morning)
+- Queries:
+  - "English energetic trending February 2025 official"
+  - "Tamil workout trending February 2025 official"
+  - "English happy trending February 2025 official"
+- Filters: Medium quality (100K+ views), trusted channels
+- Result: 30 high-energy songs perfect for morning workout
 
-### Discover Weekly Queries:
-1. `{language} new releases this week`
-2. `{language} indie songs 2024`
-3. `artists like {top_artist}`
+### Example 2: Evening Party Mix
 
-## Performance
+**User Profile:**
+- Languages: Hindi, English
+- Moods: Party, Dance, Romantic
+- Time: 8:00 PM (evening)
 
-### Deduplication:
-- Play history: 200 songs (fast lookup)
-- Filter time: <10ms
-- Memory: Minimal (set of IDs)
+**System Behavior:**
+- Prioritizes: Party, Dance (match evening), Romantic (also matches)
+- Queries:
+  - "Hindi party weekend trending February 2025 official"
+  - "English dance trending February 2025 official"
+  - "Hindi romantic trending February 2025 official"
+- Filters: Medium quality, trusted channels
+- Result: 30 party-ready songs for evening
 
-### Daily Seed:
-- Consistent per day
-- Changes at midnight UTC
-- No database needed
+### Example 3: Night Chill Session
 
-### Query Variety:
-- 4 different queries per recommendation type
-- 10 songs per query
-- Total pool: 40 songs
-- After filtering: 20-30 unique new songs
+**User Profile:**
+- Languages: English
+- Moods: Chill, Relaxing, Sad
+- Time: 11:00 PM (night)
 
-## Testing
+**System Behavior:**
+- Prioritizes: Chill, Relaxing, Sad (all match night)
+- Queries:
+  - "English chill trending February 2025 official"
+  - "English relaxing trending February 2025 official"
+  - "English sad trending February 2025 official"
+- Filters: Medium quality, trusted channels
+- Result: 30 calming songs perfect for late night
 
-### Test Deduplication:
-```bash
-# 1. Play some songs
-curl -X POST "https://your-backend.railway.app/profile/track/play?user_id=TEST123" \
-  -H "Content-Type: application/json" \
-  -d '{"id": "SONG1", "title": "Test Song 1", "artist": "Artist", "duration": 180}'
+## Integration with Flutter App
 
-# 2. Get recommendations (should exclude SONG1)
-curl "https://your-backend.railway.app/recommend/for-you?uid=TEST123"
+### 1. Add API Service Method
+
+```dart
+// lib/services/api_service.dart
+
+Future<List<Song>> getSmartRecommendations({
+  int limit = 30,
+  String quality = 'medium_quality',
+}) async {
+  final response = await get(
+    '/recommend/smart/recommendations',
+    queryParameters: {
+      'limit': limit,
+      'quality': quality,
+    },
+  );
+  
+  if (response.statusCode == 200) {
+    final data = response.data;
+    return (data['recommendations'] as List)
+        .map((json) => Song.fromJson(json))
+        .toList();
+  }
+  
+  throw Exception('Failed to get smart recommendations');
+}
+
+Future<Map<String, dynamic>> getSmartFeed({
+  int page = 1,
+  int pageSize = 20,
+}) async {
+  final response = await get(
+    '/recommend/smart/feed',
+    queryParameters: {
+      'page': page,
+      'page_size': pageSize,
+    },
+  );
+  
+  if (response.statusCode == 200) {
+    return response.data;
+  }
+  
+  throw Exception('Failed to get smart feed');
+}
 ```
 
-### Test Daily Mix:
-```bash
-# Call multiple times today - same results
-curl "https://your-backend.railway.app/recommend/daily-mix?uid=TEST123"
+### 2. Create Provider
 
-# Call tomorrow - different results
+```dart
+// lib/state/smart_recommendation_provider.dart
+
+final smartRecommendationsProvider = FutureProvider.autoDispose<List<Song>>((ref) async {
+  final apiService = ref.read(apiServiceProvider);
+  return await apiService.getSmartRecommendations(
+    limit: 30,
+    quality: 'medium_quality',
+  );
+});
+
+final smartFeedProvider = FutureProvider.family<Map<String, dynamic>, int>(
+  (ref, page) async {
+    final apiService = ref.read(apiServiceProvider);
+    return await apiService.getSmartFeed(page: page, pageSize: 20);
+  },
+);
 ```
 
-### Check Logs:
-Railway logs should show:
-```
-📊 User TEST123 has played 50 unique songs
-🔍 Filtered 15 already played songs
-🎯 For You: 20 NEW songs for TEST123
-```
+### 3. Use in UI
 
-## Configuration
+```dart
+// lib/screens/home/smart_feed_screen.dart
 
-### Play History Limit:
-```python
-# Current: Last 200 songs
-play_history = await profile_service.get_play_history(uid, limit=200)
-
-# Adjust if needed:
-# - 100: Faster, less filtering
-# - 500: Slower, more filtering
-```
-
-### Results Limit:
-```python
-# Current: 20 songs per recommendation
-return unique_results[:20]
-
-# Adjust if needed:
-# - 10: Fewer songs, faster
-# - 30: More songs, more variety
+class SmartFeedScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recommendations = ref.watch(smartRecommendationsProvider);
+    
+    return recommendations.when(
+      data: (songs) => ListView.builder(
+        itemCount: songs.length,
+        itemBuilder: (context, index) {
+          final song = songs[index];
+          return SongTile(song: song);
+        },
+      ),
+      loading: () => CircularProgressIndicator(),
+      error: (error, stack) => Text('Error: $error'),
+    );
+  }
+}
 ```
 
-## Current Status
+## Performance Considerations
 
-✅ Smart deduplication implemented  
-✅ Daily Mix with daily seed  
-✅ Discover Weekly added  
-✅ All endpoints filter played songs  
-✅ Multiple query variations  
-✅ Pushed to GitHub  
-⏳ Railway deploying  
+### Caching Strategy
 
-## Next Steps
+The system uses Redis caching for:
+- YouTube search results (4 hours)
+- User profile data (1 hour)
+- Listening history (30 minutes)
 
-1. Monitor deduplication effectiveness
-2. Analyze user engagement
-3. Tune query variations
-4. Add more discovery features
+### Optimization Tips
 
----
+1. **Use pagination** for large result sets
+2. **Cache recommendations** on client side for 15-30 minutes
+3. **Prefetch next page** when user scrolls to 80% of current page
+4. **Use quality levels** appropriately:
+   - High quality for premium users
+   - Medium quality for regular users
+   - Emerging for discovery features
 
-**Result: Users now get fresh, unique recommendations every time with no repeated songs!** 🎯🔥
+## Monitoring and Debugging
+
+### Debug Logs
+
+Watch for these emoji logs:
+
+```
+⏰ Time: evening | Appropriate moods: [Party, Dance, Romantic]
+🔍 Smart query: English party trending February 2025 official
+📊 Filtered by views (min: 100,000): 45 → 32
+🏆 Filtered by trust (min: 30): 32 → 28
+🚫 Removed spam: 28 → 25
+📈 Sorted by quality score
+✨ Smart recommendations: 25 high-quality songs for user123
+```
+
+### Common Issues
+
+**No recommendations returned:**
+- Check user has completed onboarding
+- Verify user has mood preferences set
+- Check backend logs for errors
+
+**Low quality results:**
+- Increase quality level to "high_quality"
+- Check trusted channel configuration
+- Verify view count filtering is working
+
+**Same songs repeating:**
+- Check listening history is being saved
+- Verify played songs are being filtered
+- Increase recommendation limit
+
+## Future Enhancements
+
+- [ ] Machine learning for personalized mood detection
+- [ ] Collaborative filtering based on similar users
+- [ ] Real-time trending detection
+- [ ] Genre-based recommendations
+- [ ] Artist similarity graph
+- [ ] Playlist generation based on activity (workout, study, sleep)
+- [ ] Weather-based recommendations
+- [ ] Location-based recommendations
+
+## Status: ✅ READY TO USE
+
+All code is complete and ready for testing!
