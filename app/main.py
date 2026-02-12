@@ -17,7 +17,7 @@ logging.getLogger("yt_dlp").setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Musicly Backend", version="1.0.1")  # Version bump to force rebuild
+app = FastAPI(title="Musicly Backend", version="1.0.2")  # Fixed Firestore preferences endpoint
 
 # CORS
 app.add_middleware(
@@ -72,11 +72,26 @@ except Exception as e:
 
 @app.get("/")
 async def root():
-    return {"message": "Musicly Backend API", "status": "running"}
+    return {"message": "Musicly Backend API", "status": "running", "version": "1.0.2"}
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": "1.0.2"}
+
+@app.get("/version")
+async def version():
+    """Get current backend version and deployment info"""
+    import os
+    return {
+        "version": "1.0.2",
+        "commit": "bb3cf17",
+        "features": [
+            "Fixed Firestore preferences endpoint",
+            "Enhanced /user/preferences with error handling",
+            "Support for both naming conventions"
+        ],
+        "environment": os.getenv("RAILWAY_ENVIRONMENT", "unknown")
+    }
 
 @app.get("/ping")
 async def ping():
