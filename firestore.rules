@@ -87,6 +87,30 @@ service cloud.firestore {
       }
     }
     
+    // User data collection (for Flutter app persistence)
+    match /user_data/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      // Allow all subcollections under user_data
+      match /{document=**} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+    
+    // Likes collection (for Flutter app)
+    match /likes/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      // Songs subcollection
+      match /songs/{songId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
+      }
+    }
+    
     // Deny all other access
     match /{document=**} {
       allow read, write: if false;
