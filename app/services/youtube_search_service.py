@@ -270,6 +270,7 @@ class SearchService:
     ) -> List[Dict[str, Any]]:
         """
         Search for songs with intelligent ranking and personalization.
+        Uses YouTube Music style queries for best results.
         
         Args:
             query: Search query string
@@ -281,16 +282,24 @@ class SearchService:
         """
         loop = asyncio.get_running_loop()
         
-        # 1. Intent Detection (Language-specific search enhancement)
-        languages = [
-            "malayalam", "hindi", "tamil", "english", "telugu", 
-            "kannada", "punjabi", "spanish", "korean"
-        ]
+        # 1. Enhanced Query - YouTube Music Style 🔥
+        # Add "official audio" or "topic" for better results
         q_norm = self.normalize(query)
         search_query = query
         
+        # Language-specific enhancement
+        languages = [
+            "malayalam", "hindi", "tamil", "english", "telugu", 
+            "kannada", "punjabi", "spanish", "korean", "marathi", "bengali"
+        ]
+        
         if q_norm in languages:
             search_query = f"{query} songs official audio"
+        elif "official" not in q_norm and "topic" not in q_norm:
+            # Add "official audio" to get better results
+            search_query = f"{query} official audio"
+        
+        print(f"🔍 Enhanced search query: {search_query}")
         
         # 2. Get User Context for Personalization
         context = await self.get_personal_context(user_id)
@@ -300,9 +309,9 @@ class SearchService:
         # 3. Execute YouTube Search (blocking operation in executor)
         def _blocking_search():
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                # Fetch more than needed to allow for ranking (Top 40)
+                # Fetch more than needed to allow for ranking (Top 50 for better filtering)
                 search_results = ydl.extract_info(
-                    f"ytsearch40:{search_query}", 
+                    f"ytsearch50:{search_query}", 
                     download=False
                 )
                 return search_results.get('entries', [])
@@ -323,24 +332,71 @@ class SearchService:
                 duration = entry.get('duration', 0)
                 view_count = entry.get('view_count', 0)
                 
-                # HARD FILTER: Exclude songs longer than 5 minutes (300 seconds)
-                if duration and duration > 300:
+                # HARD FILTERS 🔥
+                # 1. Duration: 60 seconds minimum, 300 seconds (5 min) maximum
+                if not duration or duration < 60 or duration > 300:
                     continue
                 
-                # Filter spam and non-music content
+                # 2. Filter spam and non-music content
                 if self.contains_negative(title, search_query):
                     continue
                 
-                # Calculate composite score
+                # 3. Calculate composite score with enhanced rules
                 score = 0
+                
+                # Match quality
                 score += self.get_match_score(search_query, title)
+                
+                # Official channel scoring (from trusted_channels)
                 score += self.get_official_score(channel, title)
+                
+                # Duration scoring
                 score += self.get_duration_score(duration)
                 
-                # Popularity boost
-                if view_count > 10000000:
+                # 🔥 ENHANCED SCORING RULES
+                c_lower = channel.lower()
+                t_lower = title.lower()
+                
+                # +50 if channel contains " - Topic" (HIGHEST PRIORITY)
+                if " - topic" in c_lower or "- topic" in c_lower:
+                    score += 50
+                    print(f"✅ Topic channel: {channel}")
+                
+                # +20 if title contains "Official Audio"
+                if "official audio" in t_lower:
                     score += 20
-                elif view_count > 1000000:
+                
+                # +15 if title contains "Official Music Video"
+                if "official music video" in t_lower or "official video" in t_lower:
+                    score += 15
+                
+                # -50 penalties for unwanted content
+                if "live" in t_lower and "live" not in q_norm:
+                    score -= 50
+                if "slowed" in t_lower:
+                    score -= 50
+                if "reverb" in t_lower:
+                    score -= 50
+                if "8d" in t_lower or "3d" in t_lower:
+                    score -= 50
+                if "nightcore" in t_lower:
+                    score -= 50
+                if "cover" in t_lower and "cover" not in q_norm:
+                    score -= 50
+                if "karaoke" in t_lower:
+                    score -= 50
+                if "instrumental" in t_lower and "instrumental" not in q_norm:
+                    score -= 50
+                
+                # -100 if video is a short (< 60 seconds already filtered above)
+                # -100 if it's a reaction video
+                if "reaction" in t_lower:
+                    score -= 100
+                
+                # Popularity boost (view-based quality)
+                if view_count > 10000000:  # 10M+ views
+                    score += 20
+                elif view_count > 1000000:  # 1M+ views
                     score += 10
                 
                 # --- PERSONALIZATION LAYER ---
@@ -384,6 +440,11 @@ class SearchService:
             
             # Sort by score and return top results
             candidates.sort(key=lambda x: x['score'], reverse=True)
+            
+            print(f"✅ Found {len(candidates)} candidates, returning top {limit}")
+            if candidates:
+                print(f"🔥 Top result: {candidates[0]['title']} by {candidates[0]['artist']} (score: {candidates[0]['score']})")
+            
             return candidates[:limit]
             
         except Exception as e:
