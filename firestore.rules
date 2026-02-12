@@ -12,91 +12,50 @@ service cloud.firestore {
     }
     
     // ============================================================================
-    // ORGANIZED STRUCTURE: users/{userId}/...
+    // CLEAN STRUCTURE: users/{userId}/
+    // Each user has unique data - no conflicts possible
     // ============================================================================
     
     match /users/{userId} {
-      // Allow user to read/write their own root document
-      allow read, write: if isOwner(userId);
-      
-      // Profile subcollection
-      match /profile/{document} {
+      // Profile document (email, name, languages, moods, created_at)
+      match /profile/data {
         allow read, write: if isOwner(userId);
       }
       
-      // Preferences subcollection
-      match /preferences/{document} {
+      // Playback document (current_playing, previous_played, next_recommended)
+      match /playback/state {
         allow read, write: if isOwner(userId);
       }
       
-      // Playback state subcollection
-      match /playback/{document} {
-        allow read, write: if isOwner(userId);
-      }
-      
-      // Play history subcollection
+      // History subcollection - {songId} with timestamp
       match /history/{songId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
       
-      // Search history subcollection
+      // Searches subcollection - {searchId} with timestamp
       match /searches/{searchId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
       
-      // Likes subcollection
+      // Likes subcollection - {songId} liked songs
       match /likes/{songId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
+        allow read, write: if isOwner(userId);
       }
       
-      // Playlists subcollection
-      match /playlists/{playlistId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
-        
-        // Playlist songs subcollection
-        match /songs/{songId} {
-          allow read: if isOwner(userId);
-          allow create: if isOwner(userId);
-          allow update: if isOwner(userId);
-          allow delete: if isOwner(userId);
-        }
-      }
-      
-      // Recommendations subcollection
-      match /recommendations/{recommendationId} {
-        allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
-        allow delete: if isOwner(userId);
-      }
-      
-      // Allow all other subcollections under user
+      // Allow any other subcollections (for future expansion)
       match /{document=**} {
         allow read, write: if isOwner(userId);
       }
     }
     
     // ============================================================================
-    // LEGACY SUPPORT (for backward compatibility)
+    // LEGACY SUPPORT (for backward compatibility during migration)
     // ============================================================================
     
-    // Old user_data structure
     match /user_data/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
     }
     
-    // Old likes structure
     match /likes/{userId}/{document=**} {
       allow read, write: if isOwner(userId);
     }
