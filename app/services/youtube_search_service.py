@@ -236,15 +236,15 @@ class SearchService:
         
         return score
     
-    def get_personal_context(self, user_id: str) -> Dict[str, Any]:
+    async def get_personal_context(self, user_id: str) -> Dict[str, Any]:
         """Get user's liked and skipped artists for personalization."""
         if not user_id:
             return {"liked_artists": set(), "skipped_artists": set()}
         
         try:
-            from app.firestore.firestore_client import firestore_client
+            from app.services.user_like_service import get_user_likes
             
-            liked = firestore_client.get_liked_songs(user_id)
+            liked = await get_user_likes(user_id)
             
             # Extract artist names from liked songs
             liked_artists = {
@@ -295,7 +295,7 @@ class SearchService:
             search_query = f"{query} songs official audio"
         
         # 2. Get User Context for Personalization
-        context = self.get_personal_context(user_id)
+        context = await self.get_personal_context(user_id)
         liked_artists = context["liked_artists"]
         skipped_artists = context["skipped_artists"]
         

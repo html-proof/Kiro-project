@@ -57,8 +57,8 @@ async def proxy_audio_stream(stream_url: str, range_header: str = None):
             response_headers["Content-Range"] = response.headers["Content-Range"]
         
         # Forward Content-Length if available for better player compatibility
-        if "Content-Length" in response.headers and not range_header:
-            response_headers["Content-Length"] = response.headers["Content-Length"]
+        # if "Content-Length" in response.headers and not range_header:
+        #     response_headers["Content-Length"] = response.headers["Content-Length"]
             
         # IMPORTANT: We purposefully OMIT Content-Length here.
         # This prevents the "Response content shorter than Content-Length" RuntimeError
