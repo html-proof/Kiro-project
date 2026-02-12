@@ -29,7 +29,7 @@ class TrustedChannels:
             
             # Malayalam/Mollywood
             "manorama music", "muzik247", "satyam audios", "millennium audios",
-            "jax music", "swargachitra", "century music",
+            "jax music", "swargachitra", "century music", "sony music malayalam",
             
             # Punjabi/Punjab
             "speed records", "white hill music", "jass records", "djjass records",
