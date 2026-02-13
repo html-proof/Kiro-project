@@ -206,9 +206,9 @@ class SearchService:
             return 0
         if seconds < 90:
             return -40  # Too short, likely not a full song
-        if 120 <= seconds <= 300:  # 2-5 minutes (UPDATED: max 5 minutes)
+        if 90 <= seconds <= 420:  # 1.5-7 minutes (UPDATED: max 7 minutes)
             return 30  # Sweet spot for songs
-        if seconds > 300:  # More than 5 minutes
+        if seconds > 420:  # More than 7 minutes
             return -100  # Exclude: Too long, likely not a song
         return 0
     
@@ -333,8 +333,8 @@ class SearchService:
                 view_count = entry.get('view_count', 0)
                 
                 # HARD FILTERS 🔥
-                # 1. Duration: 60 seconds minimum, 300 seconds (5 min) maximum
-                if not duration or duration < 60 or duration > 300:
+                # 1. Duration: 60 seconds minimum, 420 seconds (7 min) maximum
+                if not duration or duration < 60 or duration > 420:
                     continue
                 
                 # 2. Filter spam and non-music content
@@ -353,44 +353,62 @@ class SearchService:
                 # Duration scoring
                 score += self.get_duration_score(duration)
                 
-                # 🔥 ENHANCED SCORING RULES
+                # 🔥 ENHANCED SCORING RULES (Spotify-accurate)
                 c_lower = channel.lower()
                 t_lower = title.lower()
                 
-                # +50 if channel contains " - Topic" (HIGHEST PRIORITY)
+                # +80 if channel contains " - Topic" (HIGHEST PRIORITY - Real Audio)
                 if " - topic" in c_lower or "- topic" in c_lower:
-                    score += 50
+                    score += 80
                     print(f"✅ Topic channel: {channel}")
                 
-                # +20 if title contains "Official Audio"
+                # +40 if title contains "Official Audio" or "Provided to YouTube"
                 if "official audio" in t_lower:
-                    score += 20
+                    score += 40
+                if "provided to youtube" in t_lower:
+                    score += 40
                 
                 # +15 if title contains "Official Music Video"
                 if "official music video" in t_lower or "official video" in t_lower:
                     score += 15
                 
-                # -50 penalties for unwanted content
+                # Duration boost for normal song length (90s - 7min)
+                if 90 <= duration <= 420:
+                    score += 30
+                elif duration > 900:  # > 15 minutes
+                    score -= 60
+                
+                # -80 penalties for unwanted content (STRONG FILTER)
                 if "live" in t_lower and "live" not in q_norm:
-                    score -= 50
+                    score -= 80
                 if "slowed" in t_lower:
-                    score -= 50
+                    score -= 80
                 if "reverb" in t_lower:
-                    score -= 50
+                    score -= 80
                 if "8d" in t_lower or "3d" in t_lower:
-                    score -= 50
+                    score -= 80
                 if "nightcore" in t_lower:
-                    score -= 50
+                    score -= 80
                 if "cover" in t_lower and "cover" not in q_norm:
-                    score -= 50
+                    score -= 80
                 if "karaoke" in t_lower:
-                    score -= 50
+                    score -= 80
                 if "instrumental" in t_lower and "instrumental" not in q_norm:
-                    score -= 50
+                    score -= 80
+                if "remix" in t_lower and "remix" not in q_norm:
+                    score -= 80
+                if "mashup" in t_lower:
+                    score -= 80
+                if "edit" in t_lower and "edit" not in q_norm:
+                    score -= 80
+                if "tiktok" in t_lower:
+                    score -= 80
                 
                 # -100 if video is a short (< 60 seconds already filtered above)
                 # -100 if it's a reaction video
                 if "reaction" in t_lower:
+                    score -= 100
+                if "status" in t_lower:
                     score -= 100
                 
                 # Popularity boost (view-based quality)
