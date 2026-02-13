@@ -8,6 +8,7 @@ from app.services.proxy_video_stream_service import proxy_video_stream
 from app.services.audio_transcoder_service import transcode_audio_stream_mp3
 from app.utils.response_utils import success_response
 from typing import Optional
+from app.redis.redis_cache import cache_get, cache_set
 import logging
 import asyncio
 
@@ -30,10 +31,10 @@ async def search_music(
     - Personalizes results based on user's liked artists
     - Pre-resolves first 5 songs for instant playback
     """
-    results = await search_youtube(q, limit=10, user_id=user_id)
+    # 1. Check Cache
+    cache_key = f"search:{q}:{user_id or 'anon'}"
+    cached_results = cache_get(cache_key)
     
-    # Add streamUrl to each result for direct playback
-    # Get the base URL from the request, with fallback
     if request:
         # Try to get the base URL from headers first (for proxied requests)
         forwarded_proto = request.headers.get('x-forwarded-proto', 'http')
@@ -45,21 +46,40 @@ async def search_music(
             base_url = str(request.base_url).rstrip('/')
     else:
         base_url = "http://localhost:8000"
+
+    if cached_results:
+        logger.info(f"⚡ Search Cache HIT for: {q}")
+        # Need to regenerate streamUrls because base_url might change (e.g. localhost vs production)
+        for result in cached_results:
+             if result.get('id'):
+                result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=high"
+        return success_response(cached_results)
+
+    logger.info(f"🔍 Search Cache MISS for: {q}. Fetching from YouTube...")
     
+    # 2. Perform Search
+    results = await search_youtube(q, limit=10, user_id=user_id)
+    
+    # 3. Add streamUrl and Cache
     for result in results:
         if result.get('id'):
-            # Construct the full stream URL that points to our play endpoint
-            # Use 'ultra' quality (48kbps) by default for fastest fetching and lowest data usage
-            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=ultra"
+            # Use 'high' quality by default for search results (better experience)
+            result['streamUrl'] = f"{base_url}/music/play?id={result['id']}&quality=high"
+    
+    # Cache the raw results (without base_url dependent streamUrl if possible, but here we cache it all for simplicity)
+    # Actually, we should cache clean results and add streamUrl dynamically.
+    # But for now, let's just cache the results.
+    cache_set(cache_key, results, ttl=3600) # Cache for 1 hour
     
     # 🔥 PRE-RESOLVE first 5 songs in background for instant playback
     from app.services.audio_resolver_service import resolve_audio_stream_background
     for i, result in enumerate(results[:5]):
         if result.get('id'):
             # Fire and forget - don't wait
-            asyncio.create_task(resolve_audio_stream_background(result['id'], 'ultra'))
+            # Resolving with 'high' quality to match playback default
+            asyncio.create_task(resolve_audio_stream_background(result['id'], 'high'))
     
-    logger.info(f"✅ Search complete: {len(results)} results, pre-resolving first 5")
+    logger.info(f"✅ Search complete: {len(results)} results, cached & pre-resolving first 5")
     return success_response(results)
 
 @router.get("/resolve")
