@@ -22,7 +22,22 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
     
     # Try with multiple strategies - OPTIMIZED FOR SPEED
     strategies = [
-        # Strategy 1: FASTEST - Skip webpage parsing, use android client
+        # Strategy 1: ULTRA FAST - iOS Client (often fastest & most reliable)
+        {
+            "quiet": True,
+            "no_warnings": True,
+            "format": "bestaudio/best",
+            "skip_download": True,
+            "no_check_certificate": True,
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["ios", "android", "web"],
+                    "player_skip": ["webpage", "configs", "js"],
+                    "skip": ["hls", "dash"]
+                }
+            },
+        },
+        # Strategy 2: Android Client (Reliable fallback)
         {
             "quiet": True,
             "no_warnings": True,
@@ -37,7 +52,7 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
                 }
             },
         },
-        # Strategy 2: Fallback to web client only
+        # Strategy 3: Web Client (Last resort)
         {
             "quiet": True,
             "no_warnings": True,
@@ -49,13 +64,6 @@ async def resolve_audio_stream(video_id: str, quality: str = "ultra") -> dict:
                     "player_skip": ["webpage"]
                 }
             },
-        },
-        # Strategy 3: Most permissive - any audio format
-        {
-            "quiet": True,
-            "no_warnings": True,
-            "format": "bestaudio*",
-            "skip_download": True,
         }
     ]
     
