@@ -4,79 +4,19 @@ import re
 class TrustedChannels:
     def __init__(self):
         # 1. GLOBAL TOP LABELS
-        self.GLOBAL_LABELS = [
-            "vevo", "topic", "official audio", "official video",
-            "sony music", "universal music", "warner records", "atlantic records", 
-            "republic records", "interscope records", "capitol records", "rca records", 
-            "columbia records", "def jam", "island records", "epic records", 
-            "vevo", "umg", "wmg", "sme"
-        ]
+        self.GLOBAL_LABELS = []
         
-        # 2. INDIAN MAJOR LABELS - EXPANDED FOR ALL LANGUAGES & MOODS
-        self.INDIAN_LABELS = [
-            # Hindi/Bollywood Majors
-            "t-series", "zee music", "saregama", "tips official",
-            "yrf", "times music", "sony music india", "think music",
-            
-            # Telugu/Tollywood
-            "aditya music", "volga video", "ananda audio", "larsc entertainment",
-            
-            # Tamil/Kollywood  
-            "saregama tamil", "think music india", "d imman music", "sowkya music",
-            
-            # Kannada/Sandalwood
-            "lahari music", "anand audio", "paramvah studios", "msil music",
-            
-            # Malayalam/Mollywood
-            "manorama music", "muzik247", "satyam audios", "millennium audios",
-            "jax music", "swargachitra", "century music", "sony music malayalam",
-            "malayalam cassettes",
-            
-            # Punjabi/Punjab
-            "speed records", "white hill music", "jass records", "djjass records",
-            "r-nation", "fresh touch entertainment", "mp4 music", "b ally music",
-            
-            # Marathi
-            "zee music marathi", "tips marathi", "shree ashtavinayak", "atharva entertainment",
-            
-            # Bengali/Tollywood (Bengal)
-            "svf music", "times music bangla", "shree venkatesh films", "grassroot entertainment",
-            
-            # Odia
-            "saregama odia", "dreams odia", "cuttack records", "odisha music",
-            
-            # Gujarati
-            "shemaroo gujarati", "zee music gujarati", "saanjh music", "rf music"
-        ]
+        # 2. INDIAN MAJOR LABELS
+        self.INDIAN_LABELS = []
         
         # 3. K-POP / J-POP
-        self.EAST_ASIAN_LABELS = [
-            "hybe labels", "sm entertainment", "jyp entertainment", 
-            "yg entertainment", "stone music", "avex", "king records"
-        ]
+        self.EAST_ASIAN_LABELS = []
         
-        # 4. REGIONAL SPECIALS (UAE/EU/Middle East)
-        self.REGIONAL_LABELS = [
-            "rotana music", "platinum records", "mazzika", 
-            "spinnin' records", "armada music", "ministry of sound",
-            "nexus music", "anghami"
-        ]
+        # 4. REGIONAL SPECIALS
+        self.REGIONAL_LABELS = []
         
-        # 5. LIVE MUSIC CHANNELS (Reliable Indian & Global)
-        self.LIVE_MUSIC_LABELS = [
-            # Indian Live Music Channels
-            "sonyliv music", "zee5 music", "gaana live", "jiosaavn live",
-            "tips live", "saregama live", "speed live", "white hill live",
-            "manorama music live", "aditya music live", "lahari live",
-            
-            # Global Live Music
-            "vevo live", "mtv live", "vh1 live", "colors live",
-            "mtv unplugged", "mtv unclogged", "live nation", "live from here",
-            "Sony Music Malayalam",
-            
-            # Regional Live
-            "rotana live", "mazhavil manorama live", "asianet music live"
-        ]
+        # 5. LIVE MUSIC CHANNELS
+        self.LIVE_MUSIC_LABELS = []
         
         # 5. HARD NON-MUSIC BLOCK LIST
         self.HARD_BLOCK_KEYWORDS = [
