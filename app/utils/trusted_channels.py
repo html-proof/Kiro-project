@@ -30,6 +30,7 @@ class TrustedChannels:
             # Malayalam/Mollywood
             "manorama music", "muzik247", "satyam audios", "millennium audios",
             "jax music", "swargachitra", "century music", "sony music malayalam",
+            "malayalam cassettes",
             
             # Punjabi/Punjab
             "speed records", "white hill music", "jass records", "djjass records",
@@ -71,6 +72,7 @@ class TrustedChannels:
             # Global Live Music
             "vevo live", "mtv live", "vh1 live", "colors live",
             "mtv unplugged", "mtv unclogged", "live nation", "live from here",
+            "Sony Music Malayalam",
             
             # Regional Live
             "rotana live", "mazhavil manorama live", "asianet music live"
@@ -83,6 +85,7 @@ class TrustedChannels:
             "news", "live news", "breaking", "report", "journalist",
             "media", "press", "debate", "interview", "speech", 
             "motivation", "explained", "review", "reaction", "vlog", "shorts"
+            "movie Sences"
         ]
         
         # 6. MUSIC SPAM BLOCK LIST
@@ -91,7 +94,7 @@ class TrustedChannels:
             "slowed", "reverb", "nightcore", "sped up", "speed up",
             "bass boosted", "boosted", "karaoke", "instrumental",
             "remix", "dj", "mix", "mashup", "bgm", "background music",
-            "status", "edit", "tiktok"
+            "status", "edit", "tiktok","movie scences"
         ]
         
         self.ALL_TRUSTED = (
